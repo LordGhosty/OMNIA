@@ -1,0 +1,186 @@
+{
+  "name": "omnia",
+  "version": "0.0.2",
+  "description": "OMNIA â€” a local-first desktop multitool",
+  "main": "src/bootstrap.cjs",
+  "author": "OMNIA",
+  "license": "GPL-3.0-or-later",
+  "scripts": {
+    "start": "electron .",
+    "preview": "node src/preview.cjs",
+    "test": "node --test tests/*.test.cjs",
+    "build:win": "node scripts/build-process-guard.cjs && node scripts/build-ssh-helper.cjs && node scripts/build-recovery.cjs && npm run pages && electron-builder --win nsis --x64 --publish never",
+    "build:linux": "npm run pages && electron-builder --linux AppImage --x64 --publish never",
+    "pages": "node scripts/generate-pages.cjs && node scripts/generate-workbench.cjs && node scripts/generate-system-tools.cjs && node scripts/generate-file-tools.cjs && node scripts/generate-ssh.cjs && node scripts/build-id.cjs",
+    "prepare:tools": "node scripts/prepare-tools.cjs",
+    "build:portable": "node scripts/build-process-guard.cjs && node scripts/build-ssh-helper.cjs && node scripts/build-recovery.cjs && npm run pages && electron-builder --win portable --x64 --publish never",
+    "prestart": "node scripts/build-ssh-helper.cjs && node scripts/build-process-guard.cjs",
+    "pretest": "node scripts/build-ssh-helper.cjs && node scripts/build-process-guard.cjs",
+    "source:check": "node scripts/source-check.cjs",
+    "format": "prettier --write \"src/**/*.cjs\" \"web/**/*.js\" \"scripts/**/*.cjs\" \"tests/**/*.cjs\"",
+    "format:check": "prettier --check \"src/**/*.cjs\" \"web/**/*.js\" \"scripts/**/*.cjs\" \"tests/**/*.cjs\"",
+    "prebuild:win": "npm run source:check && npm run format:check",
+    "prebuild:linux": "npm run source:check && npm run format:check",
+    "prebuild:portable": "npm run source:check && npm run format:check"
+  },
+  "build": {
+    "appId": "local.omnia.multitool",
+    "productName": "OMNIA",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "src/**/*",
+      "web/**/*",
+      "assets/**/*",
+      "package.json",
+      "LICENSE",
+      "THIRD_PARTY.md",
+      "!node_modules/ffprobe-static/bin/**/*",
+      "!node_modules/ffmpeg-static/ffmpeg*",
+      "TRADEMARKS.md",
+      "SECURITY.md",
+      "!**/*.pfx",
+      "!**/*.p12",
+      "!**/*.key",
+      "!**/*.pvk",
+      "!**/*private*.pem",
+      "!**/.env*"
+    ],
+    "win": {
+      "target": "nsis",
+      "signExecutable": false,
+      "icon": "assets/icon.ico",
+      "extraResources": [
+        {
+          "from": "node_modules/ffmpeg-static/ffmpeg.exe",
+          "to": "bin/ffmpeg.exe"
+        },
+        {
+          "from": "node_modules/ffprobe-static/bin/win32/x64/ffprobe.exe",
+          "to": "bin/ffprobe.exe"
+        },
+        {
+          "from": "node_modules/ffmpeg-static/ffmpeg.exe.LICENSE",
+          "to": "bin/FFMPEG-LICENSE.txt"
+        },
+        {
+          "from": "node_modules/ffmpeg-static/ffmpeg.exe.README",
+          "to": "bin/FFMPEG-README.txt"
+        },
+        {
+          "from": "vendor/win32",
+          "to": "bin",
+          "filter": [
+            "yt-dlp*",
+            "deno*",
+            "*-LICENSE.txt",
+            "VERSIONS.json"
+          ]
+        },
+        {
+          "from": "vendor/win32/omnia-askpass.exe",
+          "to": "bin/omnia-askpass.exe"
+        },
+        {
+          "from": "vendor/win32/omnia-process-guard.exe",
+          "to": "bin/omnia-process-guard.exe"
+        }
+      ],
+      "verifyUpdateCodeSignature": true,
+      "extraFiles": [
+        {
+          "from": "vendor/win32/OMNIA Recovery.exe",
+          "to": "OMNIA Recovery.exe"
+        },
+        {
+          "from": "vendor/win32/OMNIA Validator.exe",
+          "to": "OMNIA Validator.exe"
+        }
+      ]
+    },
+    "portable": {
+      "artifactName": "OMNIA-${version}-Windows.exe"
+    },
+    "linux": {
+      "target": "AppImage",
+      "category": "AudioVideo",
+      "icon": "assets/app-icon.png",
+      "artifactName": "OMNIA-${version}-Linux.AppImage",
+      "extraResources": [
+        {
+          "from": "node_modules/ffmpeg-static/ffmpeg",
+          "to": "bin/ffmpeg"
+        },
+        {
+          "from": "node_modules/ffprobe-static/bin/linux/x64/ffprobe",
+          "to": "bin/ffprobe"
+        },
+        {
+          "from": "node_modules/ffmpeg-static/ffmpeg.LICENSE",
+          "to": "bin/FFMPEG-LICENSE.txt"
+        },
+        {
+          "from": "node_modules/ffmpeg-static/ffmpeg.README",
+          "to": "bin/FFMPEG-README.txt"
+        },
+        {
+          "from": "vendor/linux",
+          "to": "bin",
+          "filter": [
+            "yt-dlp*",
+            "deno*",
+            "*-LICENSE.txt",
+            "VERSIONS.json"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "runAfterFinish": true,
+      "artifactName": "OMNIA-${version}-Setup.exe",
+      "deleteAppDataOnUninstall": false,
+      "include": "scripts/recovery-installer.nsh"
+    },
+    "afterPack": "scripts/after-pack.cjs",
+    "afterSign": "scripts/after-sign.cjs",
+    "electronFuses": {
+      "runAsNode": false,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "enableEmbeddedAsarIntegrityValidation": true,
+      "onlyLoadAppFromAsar": true
+    },
+    "artifactBuildStarted": "scripts/artifact-start.cjs",
+    "asarUnpack": [
+      "node_modules/sharp/**/*",
+      "node_modules/@img/**/*",
+      "node_modules/exiftool-vendored.exe/**/*",
+      "node_modules/exiftool-vendored.pl/**/*"
+    ],
+    "afterAllArtifactBuild": "scripts/release-files.cjs"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9",
+    "exiftool-vendored": "39.0.1",
+    "ffmpeg-static": "5.3.0",
+    "ffprobe-static": "3.1.0",
+    "file-type": "22.2.0",
+    "sharp": "0.35.5"
+  },
+  "devDependencies": {
+    "electron": "45.0.0",
+    "electron-builder": "26.15.3",
+    "prettier": "3.6.2"
+  },
+  "allowScripts": {
+    "ffmpeg-static@5.3.0": true,
+    "electron@45.0.0": true
+  }
+}

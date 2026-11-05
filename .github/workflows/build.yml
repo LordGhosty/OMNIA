@@ -1,0 +1,167 @@
+name: Build OMNIA
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      beta:
+        description: Prepare a Windows beta draft for manual review
+        type: boolean
+        default: false
+      publish:
+        description: Use official signing and prepare a release draft
+        type: boolean
+        default: false
+      version:
+        description: New stable version, required only when publishing (for example 0.0.3)
+        type: string
+        default: ''
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Check release options
+        if: github.event_name == 'workflow_dispatch' && (inputs.beta || inputs.publish)
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          [[ "$GITHUB_REF" == "refs/heads/$DEFAULT_BRANCH" ]] || exit 1
+      - name: Validate an explicitly requested release
+        if: github.event_name == 'workflow_dispatch' && inputs.publish
+        env:
+          OMNIA_BETA: ${{ inputs.beta }}
+          RELEASE_VERSION: ${{ inputs.version }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          node scripts/configure-release.cjs
+          [[ "$OMNIA_BETA" == true ]] && exit 0
+          if [ "$(gh repo view "$GITHUB_REPOSITORY" --json isPrivate --jq .isPrivate)" != "false" ]; then
+            echo "This update feed needs public release assets. Private repositories can still build with Publish disabled."
+            exit 1
+          fi
+          gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName > releases.json
+          node -e 'const fs=require("fs");const v=process.env.RELEASE_VERSION.split(".").map(Number);for(const r of JSON.parse(fs.readFileSync("releases.json"))){if(!/^v?\d+\.\d+\.\d+$/.test(r.tagName))continue;const old=r.tagName.replace(/^v/,"").split(".").map(Number);let c=0;for(let i=0;i<3&&!c;i++)c=v[i]-old[i];if(c<=0)throw Error("Choose a version higher than "+r.tagName);}'
+  package:
+    needs: validate
+    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.publish && 'official-release' || 'development' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(inputs.beta && '[{"os":"windows-latest","command":"build:win"}]' || '[{"os":"windows-latest","command":"build:win"},{"os":"ubuntu-latest","command":"build:linux"}]') }}
+    runs-on: ${{ matrix.os }}
+    env:
+      ELECTRON_BUILDER_COMPRESSION_LEVEL: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run prepare:tools
+      - run: npm run source:check
+      - run: npm run format:check
+      - run: npm test
+      - name: Record Windows capabilities
+        if: runner.os == 'Windows'
+        run: node scripts/check-windows.cjs windows-capabilities.json
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'Windows'
+        with:
+          name: Windows-capabilities
+          path: windows-capabilities.json
+      - name: Configure the requested release
+        if: github.event_name == 'workflow_dispatch' && inputs.publish
+        run: node scripts/configure-release.cjs
+        env:
+          OMNIA_BETA: ${{ inputs.beta }}
+          RELEASE_VERSION: ${{ inputs.version }}
+      - name: Build development package
+        if: github.event_name != 'workflow_dispatch' || !inputs.publish
+        run: npm run ${{ matrix.command }}
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+      - name: Build signed official package
+        if: github.event_name == 'workflow_dispatch' && inputs.publish
+        run: npm run ${{ matrix.command }}
+        env:
+          OMNIA_OFFICIAL_RELEASE: '1'
+          OMNIA_RELEASE_PRIVATE_KEY: ${{ secrets.OMNIA_RELEASE_PRIVATE_KEY }}
+          OMNIA_RELEASE_KEY_PASSWORD: ${{ secrets.OMNIA_RELEASE_KEY_PASSWORD }}
+          WIN_CSC_LINK: ${{ runner.os == 'Windows' && secrets.WIN_CSC_LINK || '' }}
+          WIN_CSC_KEY_PASSWORD: ${{ runner.os == 'Windows' && secrets.WIN_CSC_KEY_PASSWORD || '' }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+      - name: Check the packaged Windows application
+        if: runner.os == 'Windows'
+        env:
+          OMNIA_CHECK_SIGNED: ${{ inputs.publish && '1' || '0' }}
+        run: |
+          node scripts/verify-package.cjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node scripts/smoke-package.cjs
+      - name: Archive the source used for this package
+        shell: bash
+        run: |
+          mkdir -p .qa
+          node scripts/export-source.cjs .qa/package-source
+          tar -czf "release/OMNIA-source-${RUNNER_OS}.tar.gz" -C .qa/package-source .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OMNIA-${{ matrix.os }}
+          if-no-files-found: error
+          path: |
+            release/*.exe
+            release/*.AppImage
+            release/*.blockmap
+            release/latest*.yml
+            release/OMNIA-source-*.tar.gz
+  release:
+    if: github.event_name == 'workflow_dispatch' && (inputs.publish || inputs.beta)
+    needs: package
+    environment: release-review
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: OMNIA-*
+          merge-multiple: true
+          path: packages
+      - name: Prepare release draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OMNIA_BETA: ${{ inputs.beta }}
+          RELEASE_VERSION: ${{ inputs.version }}
+          SIGNED: ${{ inputs.publish }}
+        shell: bash
+        run: |
+          cd packages
+          sha256sum -- * > ../SHA256SUMS.txt
+          mv ../SHA256SUMS.txt .
+          if [[ "$OMNIA_BETA" == true ]]; then
+            shopt -s nullglob
+            installers=(OMNIA-*-Setup.exe)
+            [[ ${#installers[@]} == 1 ]] || exit 1
+            version=${installers[0]#OMNIA-}
+            version=${version%-Setup.exe}
+            [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
+            tag="v$version-beta.$GITHUB_RUN_NUMBER"
+            note="Unsigned Windows x64 test build."
+            if [[ "$SIGNED" == true ]]; then note="Publisher-signed Windows x64 test build."; fi
+            gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "OMNIA $version beta" --notes "$note" --draft --prerelease -- *
+          else
+            gh release create "v$RELEASE_VERSION" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "OMNIA $RELEASE_VERSION" --generate-notes --draft -- *
+          fi

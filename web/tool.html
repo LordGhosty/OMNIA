@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{{TITLE}} — OMNIA</title><link rel="icon" href="/icon.png"><link rel="stylesheet" href="/style.css"><script src="/app-shell.js" defer></script><link rel="stylesheet" href="/settings.css"><script src="/settings.js" defer></script><script src="/insignia.js" defer></script><script src="/admin-indicators.js" defer></script><script src="/crop.js" defer></script><script src="/converter.js" defer></script></head>
+<body class="converter" data-tool="{{TOOL}}">
+  <header class="browser-header"><a class="wordmark" href="/" aria-label="OMNIA home"><img class="brand-icon" src="/icon.png" alt=""> OMNIA <span class="muted">/ TOOL {{NUMBER}}</span></a><div class="page-insignia" data-insignia="{{INSIGNIA}}" aria-label="{{EYEBROW}} insignia"></div></header>
+  <main class="workspace">
+    <section class="converter-heading"><div><div class="eyebrow">{{EYEBROW}}</div><h1>{{TITLE}}<span class="cursor">_</span></h1><p>{{DESCRIPTION}}</p></div></section>
+    <div class="converter-grid">
+      <section class="conversion-panel" aria-label="Convert a file"><div class="panel-title"><span><span class="muted">01 /</span> SOURCE</span><span class="micro">MAX 2 GB</span></div>
+        <div class="source-tabs" role="tablist" aria-label="Source type"><button id="file-tab" role="tab" aria-selected="true" aria-controls="file-source" data-source="file">File</button><button id="link-tab" role="tab" aria-selected="false" aria-controls="link-source" data-source="link">Link</button></div>
+        <div id="file-source" role="tabpanel" aria-labelledby="file-tab"><input id="file" type="file" accept="{{ACCEPT}}" hidden>
+        <button id="drop-zone" class="drop-zone"><span class="file-symbol" aria-hidden="true">↥</span><span class="drop-title" id="file-title">Drop your file here</span><span class="drop-description" id="file-detail">or click to browse your computer</span><span class="format-strip">{{FORMATS}}</span><span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span></button>
+        </div>
+        <div id="link-source" role="tabpanel" aria-labelledby="link-tab" hidden><label class="field-label" for="source-url">VIDEO LINK</label><div class="link-input"><input id="source-url" type="url" placeholder="Paste a video link" autocomplete="off" spellcheck="false"><span id="platform" class="platform-badge" aria-live="polite"></span></div><p class="link-hint">YouTube · Instagram · Pinterest</p><button id="load-link" class="secondary" disabled>Load video <span>→</span></button></div>
+        <p id="source-summary" class="source-summary" hidden></p>
+        {{OPTIONS}}
+        <div class="action-area"><button id="convert" class="primary" disabled><span>Convert to {{OUTPUT}}</span><span>↗</span></button><button id="cancel" class="secondary" hidden>Cancel conversion</button><div id="progress-area" hidden><div class="progress-meta"><span id="progress-label">Preparing audio</span><span id="percent">0%</span></div><progress id="progress" max="100" value="0" aria-label="Conversion progress"></progress></div><p id="status" class="status-message" role="status" aria-live="polite">Choose a file to get started.</p><div id="result" hidden><img id="gif-result" class="result-preview" alt="Converted GIF preview" hidden><video id="video-result" class="result-preview" controls playsinline hidden></video><a id="download" class="primary" download><span>Save {{OUTPUT}}</span><span>↓</span></a><button id="again" class="text-button">↶ Convert another file</button></div></div>
+      </section>
+    </div>
+    <footer class="browser-footer"><span>OMNIA <span class="slash">/</span> A LITTLE BIT OF EVERYTHING, ALL OF THE TIME.</span></footer>
+  </main>
+</body></html>

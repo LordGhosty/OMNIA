@@ -1,0 +1,165 @@
+[
+  {
+    "id": "mp3",
+    "name": "MP3 converter",
+    "category": "Audio & Video",
+    "description": "Extract sound and turn it to mp3",
+    "tags": "AUDIO + VIDEO → MP3",
+    "insignia": "audio",
+    "page": "index.html"
+  },
+  {
+    "id": "mp4",
+    "name": "MP4 converter",
+    "category": "Audio & Video",
+    "description": "Turn videos into mp4",
+    "tags": "VIDEO → MP4",
+    "insignia": "video",
+    "page": "mp4.html"
+  },
+  {
+    "id": "gif",
+    "name": "GIF converter",
+    "category": "Audio & Video",
+    "description": "Make GIFs from images and videos",
+    "tags": "IMAGES + VIDEO → GIF",
+    "insignia": "gif",
+    "page": "gif.html"
+  },
+  {
+    "id": "images",
+    "name": "Image Workshop",
+    "category": "Images",
+    "description": "Convert, resize and crop images",
+    "tags": "JPEG + PNG + WEBP",
+    "insignia": "picture",
+    "page": "images.html"
+  },
+  {
+    "id": "metadata",
+    "name": "Image Metadata",
+    "category": "Images",
+    "description": "Read, write or remove image metadata",
+    "tags": "NOTES + DETAILS + PRIVACY",
+    "insignia": "metadata",
+    "page": "metadata.html"
+  },
+  {
+    "id": "inspector",
+    "name": "File Inspector",
+    "category": "Files & Storage",
+    "description": "Inspect formats, checksums and signatures",
+    "tags": "TYPE + SHA-256 + PUBLISHER",
+    "insignia": "inspect",
+    "page": "inspector.html"
+  },
+  {
+    "id": "drives",
+    "name": "External Drives",
+    "category": "Files & Storage",
+    "description": "Manage USB drives and Automatic Flash",
+    "tags": "VOLUMES + PORTABLE TOOLS",
+    "insignia": "drive",
+    "page": "drives.html",
+    "condition": "usb",
+    "platform": "win32",
+    "admin": "changes"
+  },
+  {
+    "id": "network",
+    "name": "IP & Network",
+    "category": "Network",
+    "description": "Your connections, addresses and routes",
+    "tags": "IP + DNS + ROUTING",
+    "insignia": "globe",
+    "page": "network.html",
+    "admin": "changes"
+  },
+  {
+    "id": "speed",
+    "name": "Speed Test",
+    "category": "Network",
+    "description": "Measure your connection speed",
+    "tags": "DOWNLOAD + UPLOAD + LATENCY",
+    "insignia": "speed",
+    "page": "speed.html"
+  },
+  {
+    "id": "drivers",
+    "name": "Driver Inspector",
+    "category": "System & Administration",
+    "description": "Inspect driver packages and their devices",
+    "tags": "PUBLISHER + DEVICES + BACKUPS",
+    "insignia": "driver",
+    "page": "drivers.html",
+    "platform": "win32",
+    "admin": "changes"
+  },
+  {
+    "id": "diskspace",
+    "name": "Disk Space",
+    "category": "Files & Storage",
+    "description": "Explore your drives and storage usage",
+    "tags": "DRIVES + FOLDERS + SPACE",
+    "insignia": "diskspace",
+    "page": "diskspace.html"
+  },
+  {
+    "id": "repair",
+    "name": "Windows Repair",
+    "category": "System & Administration",
+    "description": "Check and repair Windows components",
+    "tags": "DISM + SFC + DISK CHECK",
+    "insignia": "repair",
+    "page": "repair.html",
+    "platform": "win32",
+    "admin": "required"
+  },
+  {
+    "id": "firewall",
+    "name": "Firewall Manager",
+    "category": "Network",
+    "description": "Inspect and manage firewall rules",
+    "tags": "APPLICATIONS + PORTS + PROFILES",
+    "insignia": "firewall",
+    "page": "firewall.html",
+    "platform": "win32",
+    "admin": "changes"
+  },
+  {
+    "id": "rename",
+    "name": "Batch Rename",
+    "description": "Rename files with a preview and undo",
+    "tags": "NAMES + NUMBERING + REPLACEMENTS",
+    "insignia": "rename",
+    "category": "Files & Storage",
+    "page": "rename.html"
+  },
+  {
+    "id": "duplicates",
+    "name": "Duplicate Finder",
+    "description": "Find matching files and choose copies to keep",
+    "tags": "CONTENT + COMPARE + RECYCLE",
+    "insignia": "duplicates",
+    "category": "Files & Storage",
+    "page": "duplicates.html"
+  },
+  {
+    "id": "search",
+    "name": "File Search",
+    "description": "Find files by name, type, size and date",
+    "tags": "FOLDERS + FILTERS + RESULTS",
+    "insignia": "search",
+    "category": "Files & Storage",
+    "page": "search.html"
+  },
+  {
+    "id": "ssh",
+    "name": "SSH Key Forge",
+    "category": "Security",
+    "description": "Create, inspect and protect SSH keys",
+    "tags": "KEY PAIRS + FINGERPRINTS + EXPORT",
+    "insignia": "key",
+    "page": "ssh.html"
+  }
+]
