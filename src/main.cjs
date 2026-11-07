@@ -66,6 +66,8 @@ else {
         },
       });
       const services = serviceProcesses;
+      const activeTools = new Set();
+      const activity = () => [...activeTools];
       const trashReview = require('./trash-review.cjs').createTrashReview({
         remove: (file) => shell.trashItem(file),
         isActive: () => views?.active() === 'duplicates' && !quitting,
@@ -148,6 +150,11 @@ else {
             onFault: (reason) => {
               toolHost.fail(ids, reason);
               for (const id of ids) views?.fail(id, reason);
+            },
+            onActivity: (active) => {
+              for (const id of ids) active ? activeTools.add(id) : activeTools.delete(id);
+              if (window && !window.isDestroyed() && !window.webContents.isDestroyed())
+                window.webContents.send('omnia:tool-activity', activity());
             },
             onEvent: (name, data) => {
               if (ids[0] !== 'drives') throw Error('This tool cannot send drive events.');
@@ -263,7 +270,14 @@ else {
           sandbox: true,
         },
       });
-      window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+      window.webContents.setWindowOpenHandler(({ url }) => {
+        if (
+          url === 'https://quantum-sharkware.pages.dev/' &&
+          window.webContents.getURL().split('?', 1)[0] === server.origin + '/launcher.html'
+        )
+          void shell.openExternal(url).catch(() => {});
+        return { action: 'deny' };
+      });
       // Shell-owned navigation.
       window.webContents.on('will-navigate', (event) => event.preventDefault());
       window.on('app-command', (_event, command) => {
@@ -367,6 +381,7 @@ else {
         return validation.status();
       });
       let recoveries = 0;
+      handle('omnia:tool-activity', () => activity());
       const navigation = require('./navigation.cjs').createNavigation(async (tool) => {
         if (!(tool === 'home' || registry.some((entry) => entry.id === tool))) return false;
         if (toolHost.has(tool))
@@ -377,6 +392,7 @@ else {
         window,
         server,
         registry,
+        resizeEnabled: () => settings.get().windowResize,
         motionEnabled: () => settings.get().enabled && settings.get().transitions,
         onFault: (id, reason) => toolHost.quarantine([id], reason),
         onHome: () => navigation.reset(),
@@ -389,7 +405,7 @@ else {
           try {
             return await settings.update(data);
           } catch {
-            throw Error('Could not save animation settings. Try again.');
+            throw Error('Could not save settings. Try again.');
           }
         }
         if (action === 'open') {
@@ -463,7 +479,17 @@ else {
         if (!trusted(event)) throw Error('Untrusted administrator request.');
         if (action === 'status') return admin.status();
         if (admin.status().busy) throw Error('Wait for the active system operation to finish.');
-        if (action === 'enable') return admin.enable();
+        if (action === 'enable') {
+          if (
+            app.isPackaged &&
+            require('../assets/release-trust.json').mode === 'release-key' &&
+            validation.status().state !== 'validated'
+          )
+            throw Error(
+              'Administrator access requires a verified release. Wait for verification or reinstall the official release.',
+            );
+          return admin.enable();
+        }
         if (action === 'disable') return admin.disable();
         throw Error('Unsupported administrator request.');
       });
@@ -768,7 +794,7 @@ else {
       const updates = require('./updates.cjs').createUpdates({
         app,
         window,
-        isBusy: server.isBusy,
+        isBusy: () => server.isBusy() || services.some((service) => service.isBusy()),
         recovery: require('./bootstrap.cjs').get(),
       });
       handle('omnia:updates', async (event, action) => {
@@ -854,6 +880,8 @@ else {
               window,
               server,
               workbench,
+              diskSpace,
+              validation,
               views,
               visibleMs,
               introFrames,

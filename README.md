@@ -14,11 +14,15 @@ OMNIA is a desktop multitool for working with files and looking after your PC. O
 
 ## Getting started
 
-Run `OMNIA-0.0.2-Setup.exe` on Windows x64, then open **OMNIA** from the Start menu. Pick a tool in the Hub. To try the MP3 converter, drop in a video with sound, choose the quality, click **Convert**, then save the result.
+Download **OMNIA-0.0.3-Setup.exe** from the assets on the [GitHub Releases page](https://github.com/LordGhosty/OMNIA/releases). Run the wizard on Windows x64, then open **OMNIA** from the Start menu. The installer includes the runtime. Node.js is only needed to run the project from source.
 
-The shield at the top enables administrator access for tools that change system settings. The gear beside it opens **Settings**, where you can turn off all animations or adjust insignias, tool transitions and detail animations separately.
+Setup includes optional Recovery and Validator utilities and an Uninstaller shortcut. Choose them in the wizard. Running a newer setup replaces your existing OMNIA installation and remembers these choices.
 
-Version 0.0.2 is an unsigned beta, so the Hub displays **UNVALIDATED SOFTWARE**. It has been tested on Windows 11 x64. Windows 10 22H2 x64 testing is still pending. [Windows compatibility](WINDOWS_COMPATIBILITY.md) · [Release verification](SECURITY.md)
+The shield enables administrator access for tools that change system settings. The gear opens **Settings**, where you can adjust animations and turn off automatic window resizing when moving between tools and the Hub. A spinner in the Hub shows which tools are still working.
+
+Upgrading from 0.0.2? Run the 0.0.3 installer once. From 0.0.3 onward, the update button checks for newer stable releases. The Hub shows **RELEASE SIGNATURE VERIFIED** after it checks the installed files against OMNIA’s release key. Windows may still show **Unknown Publisher**.
+
+Tested on Windows 11 x64. Windows 10 22H2 x64 is a target awaiting desktop testing. [Windows compatibility](WINDOWS_COMPATIBILITY.md) · [Release verification](SECURITY.md)
 
 ## Running from source
 

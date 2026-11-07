@@ -103,7 +103,7 @@ module.exports = async function settingsSmoke({ window, views, navigate, dir }) 
   try {
     await js(
       hub,
-      "window.omnia.settings('update',{enabled:true,insignia:true,transitions:true,details:true})",
+      "window.omnia.settings('update',{enabled:true,insignia:true,transitions:true,details:true,windowResize:true})",
     );
     await navigate('home');
     const logo = (await fs.readFile(path.join(__dirname, '../assets/logo.txt'), 'utf8')).replace(
@@ -147,10 +147,13 @@ module.exports = async function settingsSmoke({ window, views, navigate, dir }) 
       'none',
     );
     await toggle(hub, 'transitions', false);
+    await toggle(hub, 'windowResize', false);
+    const fixedBounds = window.getBounds();
     await close(hub);
     await navigate('mp3');
     assert.equal(views.lastTransition().frames, 1);
     assert.equal(views.lastTransition().durationMs, 0);
+    assert.deepEqual(window.getBounds(), fixedBounds);
     const mp3 = views.get('mp3');
     await js(mp3, "document.querySelector('#edit-volume').value='3'");
     await open(hub);
@@ -176,9 +179,12 @@ module.exports = async function settingsSmoke({ window, views, navigate, dir }) 
       insignia: false,
       transitions: false,
       details: false,
+      windowResize: false,
     });
     await toggle(hub, 'insignia', true);
     await close(hub);
+    await navigate('home');
+    assert.deepEqual(window.getBounds(), fixedBounds);
     await navigate('mp4');
     assert.equal(views.lastTransition().frames, 1);
     const mp4 = views.get('mp4');
@@ -204,7 +210,7 @@ module.exports = async function settingsSmoke({ window, views, navigate, dir }) 
     await navigate('home');
     await js(
       hub,
-      "window.omnia.settings('update',{enabled:true,insignia:true,transitions:true,details:true})",
+      "window.omnia.settings('update',{enabled:true,insignia:true,transitions:true,details:true,windowResize:true})",
     );
     window.show();
     window.moveTop();

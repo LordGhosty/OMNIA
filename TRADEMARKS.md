@@ -18,6 +18,6 @@ Permission to modify source code is not permission to present a modified product
 
 The official project's signing credentials are not distributed with the source. Forks must use their own signing identity and explain it to their users.
 
-## Before public release
+## Official project
 
-The project owner must publish the official repository/download locations, the responsible rights-holder/contact and the expected signing identity. These are not yet configured in this development project. The name and artwork should undergo clearance in the intended jurisdictions before registration or public brand claims. Legal enforceability depends on applicable law; this file does not itself prevent impersonation.
+The official repository is [LordGhosty/OMNIA](https://github.com/LordGhosty/OMNIA). Official downloads are distributed through [GitHub Releases](https://github.com/LordGhosty/OMNIA/releases). The public release-key fingerprint and verification instructions are in [SECURITY.md](SECURITY.md).

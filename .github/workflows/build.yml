@@ -107,6 +107,7 @@ jobs:
         if: runner.os == 'Windows'
         env:
           OMNIA_CHECK_SIGNED: ${{ inputs.publish && '1' || '0' }}
+          OMNIA_EXPECT_SIGNED: ${{ inputs.publish && '1' || '0' }}
         run: |
           node scripts/verify-package.cjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -125,6 +126,8 @@ jobs:
             release/*.exe
             release/*.AppImage
             release/*.blockmap
+            release/*.exe.sig
+            release/OMNIA-update.json
             release/latest*.yml
             release/OMNIA-source-*.tar.gz
   release:

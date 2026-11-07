@@ -1,8 +1,14 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
-const defaults = Object.freeze({ enabled: true, insignia: true, transitions: true, details: true });
+const defaults = Object.freeze({
+  enabled: true,
+  insignia: true,
+  transitions: true,
+  details: true,
+  windowResize: true,
+});
 
-/** Stores animation preferences independently of tool sessions. */
+/** Stores window and animation preferences independently of tool sessions. */
 async function createSettings(file, onChange = () => {}) {
   let state = { ...defaults },
     queue = Promise.resolve();
@@ -26,7 +32,7 @@ async function createSettings(file, onChange = () => {}) {
         ([key, value]) => !Object.hasOwn(defaults, key) || typeof value !== 'boolean',
       )
     )
-      return Promise.reject(Error('Unsupported animation setting.'));
+      return Promise.reject(Error('Unsupported setting.'));
     patch = { ...patch };
     const task = queue.then(async () => {
       const next = { ...state, ...patch };

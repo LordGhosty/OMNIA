@@ -127,6 +127,37 @@ test('manifest signing refuses an unrelated private key', () =>
       /does not match/,
     );
   }));
+test('optional utilities may be omitted but installed utilities must match their signed hashes', () =>
+  fixture(async ({ root, options, sign }) => {
+    for (const name of ['OMNIA Recovery.exe', 'OMNIA Validator.exe'])
+      await fs.writeFile(path.join(root, name), 'test utility');
+    await sign();
+    assert.equal((await verifyRelease(options)).state, 'validated');
+    await fs.unlink(path.join(root, 'OMNIA Recovery.exe'));
+    await fs.unlink(path.join(root, 'OMNIA Validator.exe'));
+    assert.equal((await verifyRelease(options)).state, 'validated');
+    await fs.writeFile(path.join(root, 'OMNIA Validator.exe'), 'changed utility');
+    assert.equal((await verifyRelease(options)).state, 'unvalidated');
+    await fs.unlink(path.join(root, 'OMNIA Validator.exe'));
+    await fs.unlink(path.join(root, 'resources', 'bin', 'helper.exe'));
+    assert.equal((await verifyRelease(options)).state, 'unvalidated');
+  }));
+
+test('even a signed optional flag cannot exempt a required application file', () =>
+  fixture(async ({ root, options, privateKey }) => {
+    const file = path.join(root, 'resources', 'omnia-release.json');
+    const manifest = JSON.parse(Buffer.from(JSON.parse(await fs.readFile(file)).payload, 'base64'));
+    manifest.files.find((item) => item.path === 'resources/app.asar').optional = true;
+    const payload = Buffer.from(JSON.stringify(manifest));
+    await fs.writeFile(
+      file,
+      JSON.stringify({
+        payload: payload.toString('base64'),
+        signature: crypto.sign(null, payload, privateKey).toString('base64'),
+      }),
+    );
+    assert.equal((await verifyRelease(options)).state, 'unvalidated');
+  }));
 test('Windows certificate verification rejects an unconfigured identity', async () => {
   await assert.rejects(checkWindowsSignature(process.execPath, {}), /not been configured/);
 });

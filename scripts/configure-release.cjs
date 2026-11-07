@@ -14,11 +14,15 @@ if (
   throw new Error('Choose a stable release version, for example 0.0.3.');
 const trust = require('../assets/release-trust.json');
 require('../src/validation.cjs').publicKeyFor(trust);
+const ownKey = trust.mode === 'release-key';
+if (ownKey && trust.repository !== repository)
+  throw Error('The repository differs from the pinned release identity.');
 if (
-  !trust.windowsPublisherName ||
-  !Array.isArray(trust.windowsCertificateSha256) ||
-  !trust.windowsCertificateSha256.length ||
-  trust.windowsCertificateSha256.some((v) => !/^([a-fA-F0-9]{64})$/.test(v))
+  !ownKey &&
+  (!trust.windowsPublisherName ||
+    !Array.isArray(trust.windowsCertificateSha256) ||
+    !trust.windowsCertificateSha256.length ||
+    trust.windowsCertificateSha256.some((v) => !/^([a-fA-F0-9]{64})$/.test(v)))
 )
   throw Error(
     'Configure the official Windows publisher and certificate SHA-256 pins before publishing.',
@@ -31,14 +35,16 @@ const compare = (a, b) => {
 };
 if (!beta && compare(version, p.version) <= 0)
   throw new Error('The release version must be higher than the current source version.');
-p.build.forceCodeSigning = true;
+p.build.forceCodeSigning = !ownKey;
 p.build.win.signExecutable = true;
-p.build.win.verifyUpdateCodeSignature = true;
-p.build.win.signtoolOptions = {
-  ...p.build.win.signtoolOptions,
-  publisherName: trust.windowsPublisherName,
-  signingHashAlgorithms: ['sha256'],
-};
+p.build.win.verifyUpdateCodeSignature = !ownKey;
+p.build.win.signtoolOptions = ownKey
+  ? { sign: './scripts/sign-artifact.cjs', signingHashAlgorithms: ['sha256'] }
+  : {
+      ...p.build.win.signtoolOptions,
+      publisherName: trust.windowsPublisherName,
+      signingHashAlgorithms: ['sha256'],
+    };
 const [owner, repo] = repository.split('/');
 p.version = version;
 if (!beta) p.build.publish = [{ provider: 'github', owner, repo, releaseType: 'release' }];
@@ -52,6 +58,6 @@ launcher = launcher.replace(/V\.\d+\.\d+\.\d+/, 'V.' + version);
 fs.writeFileSync('web/launcher.html', launcher);
 fs.writeFileSync(
   'assets/updates.json',
-  JSON.stringify({ enabled: !beta, repository: beta ? '' : repository }, null, 2) + '\n',
+  JSON.stringify({ enabled: !beta, repository }, null, 2) + '\n',
 );
 console.log(`Prepared ${repository} release ${version}. No credentials are included in the app.`);

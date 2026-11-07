@@ -31,8 +31,8 @@ internal static class Validator
             var mismatch = expected.Length > 0 && !matches;
             return new Result { Digest = digest, Trusted = trusted && !mismatch, Matches = matches,
                 Verdict = (mismatch ? "Checksum mismatch." : matches ? "Checksum matches. " : "")
-                    + (mismatch ? "" : trusted ? "Verified OMNIA publisher signature."
-                    : "OMNIA publisher signature unverified.") };
+                    + (mismatch ? "" : trusted ? "OMNIA release signature verified."
+                    : "Unverified. Place the matching .sig file beside this executable.") };
         }
     }
 
@@ -51,7 +51,7 @@ internal static class Validator
             FormBorderStyle = FormBorderStyle.FixedDialog, MaximizeBox = false, StartPosition = FormStartPosition.CenterScreen })
         using (var picker = new OpenFileDialog { Filter = "Windows executables (*.exe)|*.exe", Title = "Choose an OMNIA executable" }) {
             var choose = new Button { Text = "Choose file", Bounds = new Rectangle(20,20,112,36), FlatStyle = FlatStyle.Flat };
-            var name = new Label { Text = "Select an installer or executable.", Bounds = new Rectangle(146,28,432,28), AutoEllipsis = true };
+            var name = new Label { Text = "Select a file with its matching .sig beside it.", Bounds = new Rectangle(146,28,432,28), AutoEllipsis = true };
             var prompt = new Label { Text = "Paste the release SHA-256 to compare (optional)", Bounds = new Rectangle(20,77,550,22) };
             var expected = new TextBox { Bounds = new Rectangle(20,104,560,30), MaxLength = 128, BackColor = Color.FromArgb(32,32,32), ForeColor = Color.WhiteSmoke, BorderStyle = BorderStyle.FixedSingle };
             var verify = new Button { Text = "Verify file", Bounds = new Rectangle(20,149,112,36), FlatStyle = FlatStyle.Flat, Visible = false };

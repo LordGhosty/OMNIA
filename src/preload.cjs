@@ -97,6 +97,9 @@ contextBridge.exposeInMainWorld('omnia', {
   onSettingsOpen: (callback) =>
     ipcRenderer.on('omnia:settings-open', (_event, data) => callback(data)),
   toolInfo: () => ipcRenderer.invoke('omnia:tool-info'),
+  toolActivity: () => ipcRenderer.invoke('omnia:tool-activity'),
+  onToolActivity: (callback) =>
+    ipcRenderer.on('omnia:tool-activity', (_event, state) => callback(state)),
   toolView: (action, data) => ipcRenderer.invoke('omnia:tool-view', action, data),
   onToolTransition: (callback) =>
     ipcRenderer.on('omnia:tool-transition', (_event, state) => callback(state)),

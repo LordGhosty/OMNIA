@@ -1,5 +1,11 @@
 (() => {
-  const defaults = { enabled: true, insignia: true, transitions: true, details: true };
+  const defaults = {
+    enabled: true,
+    insignia: true,
+    transitions: true,
+    details: true,
+    windowResize: true,
+  };
   const reduce = matchMedia('(prefers-reduced-motion: reduce)');
   const root = document.documentElement;
   let state = { ...defaults },
@@ -17,7 +23,7 @@
       <label class="settings-row"><span>Insignia animations</span><input type="checkbox" role="switch" data-setting="insignia"><span class="settings-switch" aria-hidden="true"></span></label>
       <label class="settings-row"><span>Tool Transition</span><input type="checkbox" role="switch" data-setting="transitions"><span class="settings-switch" aria-hidden="true"></span></label>
       <label class="settings-row"><span>Detail Animations</span><input type="checkbox" role="switch" data-setting="details"><span class="settings-switch" aria-hidden="true"></span></label>
-    </div></div><p class="settings-note" id="settings-reduced" hidden>Reduced motion is enabled in your system settings.</p><p id="settings-status" class="settings-note" role="status"></p></div>`;
+    </div></div><label class="settings-row settings-master" title="Adjust window height when entering or leaving a tool"><span>Window Resize</span><input type="checkbox" role="switch" data-setting="windowResize"><span class="settings-switch" aria-hidden="true"></span></label><p class="settings-note" id="settings-reduced" hidden>Reduced motion is enabled in your system settings.</p><p id="settings-status" class="settings-note" role="status"></p></div>`;
   document.body.append(panel);
   const snapshot = document.createElement('img');
   snapshot.className = 'settings-snapshot';

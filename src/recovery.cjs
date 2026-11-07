@@ -26,7 +26,15 @@ async function digest(file) {
 }
 
 /** Retains one verified installer for the currently running release before an update. */
-function createRecovery({ directory, version, buildId, repository, verify, fetcher = fetch }) {
+function createRecovery({
+  directory,
+  version,
+  buildId,
+  repository,
+  verify,
+  fetcher = fetch,
+  trust,
+}) {
   const stateFile = path.join(directory, 'startup.json'),
     backupFile = path.join(directory, 'previous-setup.exe'),
     manifestFile = path.join(directory, 'backup.json');
@@ -54,7 +62,8 @@ function createRecovery({ directory, version, buildId, repository, verify, fetch
     if (!info) return null;
     try {
       if ((await digest(backupFile)) !== info.sha256) return null;
-      await verify(backupFile);
+      const proof = await verify(backupFile);
+      if (proof?.version && proof.version !== info.version) return null;
       return { ...info, file: backupFile };
     } catch {
       return null;
@@ -113,9 +122,15 @@ function createRecovery({ directory, version, buildId, repository, verify, fetch
         limit,
         require('node:fs').createWriteStream(temp, { flags: 'wx' }),
       );
-      await verify(temp);
+      let envelope;
+      if (trust?.mode === 'release-key') {
+        const signatures = require('./release-signature.cjs');
+        envelope = await signatures.fetchEnvelope(url + '.sig', fetcher);
+        await signatures.verifyArtifact(temp, envelope, trust, { version });
+      } else await verify(temp);
       const info = { version, sha256: await digest(temp), savedAt: new Date().toISOString() };
       await fs.rename(temp, backupFile);
+      if (envelope) await writeJSON(backupFile + '.sig', envelope);
       await writeJSON(manifestFile, info);
       return { ...info, file: backupFile };
     } finally {

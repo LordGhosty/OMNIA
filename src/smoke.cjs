@@ -2,9 +2,30 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const capture = require('./smoke-capture.cjs');
-async function smoke({ app, window, server, workbench, visibleMs, introFrames, views }) {
+async function smoke({
+  app,
+  window,
+  server,
+  workbench,
+  diskSpace,
+  validation,
+  visibleMs,
+  introFrames,
+  views,
+}) {
   const dir = path.join(process.cwd(), '.qa');
   await fs.mkdir(dir, { recursive: true });
+  if (app.isPackaged && process.env.OMNIA_EXPECT_SIGNED === '1') {
+    validation.start();
+    for (let i = 0; i < 1200 && validation.status().state === 'checking'; i++)
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    if (validation.status().state !== 'validated') throw Error(validation.status().reason);
+    const label = await window.webContents.executeJavaScript(
+      "document.querySelector('#validation-status').textContent",
+    );
+    if (label !== validation.status().label)
+      throw Error('The Hub did not display the verified release state.');
+  }
   const auth = await fetch(server.url, { redirect: 'manual' });
   const cookie = auth.headers.get('set-cookie').split(';')[0];
   const samples = 22050;
@@ -49,6 +70,7 @@ async function smoke({ app, window, server, workbench, visibleMs, introFrames, v
     await capture(window.webContents),
   );
   const report = {
+    validation: validation?.status(),
     packaged: app.isPackaged,
     visibleMs,
     bounds: window.getBounds(),
@@ -104,6 +126,51 @@ async function smoke({ app, window, server, workbench, visibleMs, introFrames, v
     await delay(250);
   };
   report.settings = await require('./settings-smoke.cjs')({ window, views, navigate, dir });
+  const assert = require('node:assert/strict');
+  const preferences = await rootJS('window.omnia.settings("get")');
+  const layout = await rootJS('document.querySelector(".tool-directory").dataset.layout');
+  const busyCard = 'document.querySelector(".tool-card[data-tool=diskspace]")';
+  try {
+    await navigate('diskspace');
+    await diskSpace.start(path.join(process.cwd(), 'node_modules'));
+    await navigate('home');
+    assert.equal(await rootJS(busyCard + '.classList.contains("tool-working")'), true);
+    for (const mode of ['grid', 'list']) {
+      await rootJS(
+        `document.querySelector('[data-view=${mode}]').click(); ${busyCard}.scrollIntoView({block:'center'})`,
+      );
+      await delay(200);
+      const state = await rootJS(`(() => {
+        const card = ${busyCard};
+        const visible = [...card.querySelectorAll('.tool-spinner')].filter(e => e.getBoundingClientRect().width && getComputedStyle(e).display !== 'none');
+        return { count: visible.length, parent: visible[0]?.parentElement.className, spokes: visible[0]?.children.length, chevron: getComputedStyle(card.querySelector('.tool-chevron')).display };
+      })()`);
+      assert.equal(state.count, 1);
+      assert.equal(state.spokes, 8);
+      assert.equal(state.parent, mode === 'grid' ? 'tool-launch' : 'tool-icon');
+      if (mode === 'list') assert.equal(state.chevron, 'none');
+      await fs.writeFile(
+        path.join(dir, 'activity-' + mode + '.png'),
+        await capture(window.webContents),
+      );
+    }
+    await rootJS('window.omnia.settings("update",{enabled:false})');
+    assert.equal(
+      await rootJS(`getComputedStyle(${busyCard}.querySelector('.tool-spinner i')).animationName`),
+      'none',
+    );
+    await diskSpace.cancel();
+    for (let i = 0; i < 60 && (await rootJS(busyCard + '.classList.contains("tool-working")')); i++)
+      await delay(100);
+    assert.equal(await rootJS(busyCard + '.classList.contains("tool-working")'), false);
+    report.backgroundActivity = { grid: true, list: true, cancelled: true, respectsMotion: true };
+  } finally {
+    await diskSpace.clear();
+    await rootJS('window.omnia.settings("update",' + JSON.stringify(preferences) + ')');
+    await rootJS(
+      `document.querySelector('[data-view=${layout}]').click();document.querySelector('.launcher').scrollTop=0`,
+    );
+  }
   report.nativeTools = [];
   report.adminCards = await rootJS(
     "[...document.querySelectorAll('.tool-title>.admin-indicator')].map(e=>({id:e.closest('.tool-card').dataset.tool,mode:e.dataset.admin}))",

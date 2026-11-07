@@ -7,7 +7,7 @@ const validationDialog = document.querySelector('#validation-dialog');
 function validationState(state) {
   const badge = document.querySelector('#validation-status');
   const labels = {
-    validated: 'VALIDATED SOFTWARE',
+    validated: state.label === 'RELEASE SIGNATURE VERIFIED' ? state.label : 'VALIDATED SOFTWARE',
     checking: 'CHECKING SOFTWARE',
     unvalidated: 'UNVALIDATED SOFTWARE',
   };

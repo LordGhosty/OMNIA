@@ -84,6 +84,13 @@ function createDiskSpace({
           rejectRequests(e);
         }
       });
+      current.on('exit', () => {
+        if (current === worker && scan?.phase === 'scanning') {
+          const error = Error('The disk scan stopped unexpectedly.');
+          scan = { ...scan, phase: 'error', issues: [{ reason: error.message }] };
+          rejectRequests(error);
+        }
+      });
     } finally {
       starting = false;
     }
@@ -136,6 +143,15 @@ function createDiskSpace({
     if (previous) await previous.terminate();
     scan = null;
   }
-  return { status, refresh, start, startVolume, query, cancel, close };
+  return {
+    status,
+    refresh,
+    start,
+    startVolume,
+    query,
+    cancel,
+    close,
+    isBusy: () => loading || starting || scan?.phase === 'scanning',
+  };
 }
 module.exports = { createDiskSpace };

@@ -1,6 +1,10 @@
 (() => {
   const root = document.querySelector('#tool-categories');
   const categories = new Map();
+  const visibility = new IntersectionObserver((entries) => {
+    for (const entry of entries)
+      entry.target.classList.toggle('activity-offscreen', !entry.isIntersecting);
+  });
   const windows = document.createElement('section');
   windows.className = 'platform-group';
   const platformHeading = document.createElement('h2');
@@ -15,6 +19,16 @@
     el.textContent = text;
     return el;
   };
+  function spinner() {
+    const el = span('tool-spinner', '');
+    el.setAttribute('aria-hidden', 'true');
+    for (let i = 0; i < 8; i++) {
+      const spoke = document.createElement('i');
+      spoke.style.setProperty('--spoke', i);
+      el.append(spoke);
+    }
+    return el;
+  }
   for (const [index, tool] of window.omniaTools.entries()) {
     const categoryKey = (tool.platform || 'all') + ':' + tool.category;
     if (!categories.has(categoryKey)) {
@@ -35,7 +49,8 @@
     button.hidden = !!tool.condition;
     if (tool.condition) button.dataset.condition = tool.condition;
     if (tool.id === 'mp3') button.id = 'open-converter';
-    const icon = span('tool-icon', '❯');
+    const icon = span('tool-icon', '');
+    icon.append(span('tool-chevron', '❯'), spinner());
     icon.setAttribute('aria-hidden', 'true');
     const copy = span('tool-copy', '');
     copy.append(
@@ -47,7 +62,7 @@
     mark.dataset.insignia = tool.insignia;
     mark.setAttribute('aria-hidden', 'true');
     const launch = span('tool-launch', '');
-    launch.append(span('', 'OPEN TOOL'), span('arrow', '→'));
+    launch.append(spinner(), span('', 'OPEN TOOL'), span('arrow', '→'));
     button.append(
       span('tool-number', String(index + 1).padStart(2, '0')),
       icon,
@@ -56,6 +71,7 @@
       launch,
     );
     categories.get(categoryKey).list.append(button);
+    visibility.observe(button);
   }
   root.append(windows);
   window.refreshDirectory = () => {
@@ -72,4 +88,31 @@
     windows.hidden = ![...windows.querySelectorAll('.tool-card')].some((card) => !card.hidden);
   };
   window.refreshDirectory();
+  function activity(ids) {
+    const active = new Set(ids);
+    for (const card of root.querySelectorAll('.tool-card')) {
+      const busy = active.has(card.dataset.tool);
+      card.classList.toggle('tool-working', busy);
+      if (busy) {
+        card.setAttribute('aria-description', 'Working in the background');
+        card.title = 'Working in the background';
+      } else {
+        card.removeAttribute('aria-description');
+        card.removeAttribute('title');
+      }
+    }
+  }
+  if (window.omnia?.toolActivity) {
+    let received = false;
+    window.omnia.onToolActivity((ids) => {
+      received = true;
+      activity(ids);
+    });
+    window.omnia
+      .toolActivity()
+      .then((ids) => {
+        if (!received) activity(ids);
+      })
+      .catch(() => {});
+  }
 })();

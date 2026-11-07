@@ -17,13 +17,14 @@ test('animation preferences persist independently and preserve subsettings when 
     settings.update({ insignia: false }),
     settings.update({ transitions: false }),
   ]);
-  await settings.update({ enabled: false });
+  await settings.update({ enabled: false, windowResize: false });
   const reopened = await createSettings(file);
   assert.deepEqual(reopened.get(), {
     enabled: false,
     insignia: false,
     transitions: false,
     details: true,
+    windowResize: false,
   });
   await reopened.update({ enabled: true });
   assert.equal(reopened.get().insignia, false);

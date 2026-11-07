@@ -22,6 +22,6 @@ Run these checks on disposable Windows 10 and Windows 11 VMs, using a standard a
 4. Check UAC refusal, approval, disabling the session and cancellation of the core confirmation. Attempt cross-tool operations through the regression fixtures; no privileged command should run without the correct tool and confirmation.
 5. On disposable fixtures only, verify driver backup/removal, firewall edits and undo, USB operations, and maintenance results/restart requirements. A successful simulated test is not evidence that an actual Windows mutation succeeds.
 6. Check large media files, low disk space, unavailable OpenSSH, non-English Windows, Unicode paths, offline operation and restrictive policies. Verify failed tools can be reset while other tools still work.
-7. Use two distinct signed versions to test update download, invalid-signature rejection, interrupted installation and recovery with the independent recovery utility. Do not publish until actual signing pins, release keys and the protected GitHub release environment are configured.
+7. Use two distinct project-signed versions to test update download, invalid-signature rejection, interrupted installation and restore with OMNIA Recovery. Version 0.0.3 is the first signed baseline. The installed upgrade and restore test is pending.
 
 Never run destructive release checks against personal disks, drivers or firewall rules.

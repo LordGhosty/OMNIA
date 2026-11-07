@@ -5,7 +5,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { EventEmitter } = require('node:events');
 
-function fixture(t, { animate = true, loading = false } = {}) {
+function fixture(t, { animate = true, loading = false, resizeEnabled } = {}) {
   let host, finishLoad;
   const faults = [],
     children = [],
@@ -103,6 +103,7 @@ function fixture(t, { animate = true, loading = false } = {}) {
     window,
     server: { origin: 'http://localhost', toolURL: (id) => 'http://localhost/' + id },
     registry: [],
+    resizeEnabled,
     onFault: (...args) => faults.push(args),
     onHome() {},
     onHistory() {},
@@ -110,6 +111,27 @@ function fixture(t, { animate = true, loading = false } = {}) {
   t.after(() => host.close());
   return { host, window, contents, children, faults, finishLoad: () => finishLoad() };
 }
+
+test('navigation preserves user bounds when Window Resize is off', async (t) => {
+  let resize = true;
+  const { host, window } = fixture(t, { resizeEnabled: () => resize });
+  let bounds = { x: 160, y: 40, width: 1080, height: 760 };
+  window.getBounds = () => ({ ...bounds });
+  window.setBounds = (patch) => Object.assign(bounds, patch);
+  await host.open('mp3');
+  assert.equal(bounds.height, 920);
+  resize = false;
+  bounds = { x: 390, y: 90, width: 990, height: 810 };
+  for (const target of ['home', 'mp4', 'home']) {
+    assert.ok(await host.open(target));
+    assert.deepEqual(bounds, { x: 390, y: 90, width: 990, height: 810 });
+    assert.equal(host.lastTransition().boundsUpdates, 0);
+  }
+  resize = true;
+  await host.open('gif');
+  await host.open('home');
+  assert.equal(bounds.height, 720);
+});
 
 test('closing cached and active views is idempotent', async (t) => {
   const f = fixture(t);

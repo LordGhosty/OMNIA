@@ -80,3 +80,46 @@
 .input-feedback{margin:12px 0 0;padding:10px 12px;border-left:2px solid var(--ink);color:var(--ink);font:12px/1.6 var(--mono);text-align:left}.drop-zone[aria-invalid="true"]{border-color:var(--ink)}
 dialog[data-preparing="true"]>:not(.network-buttons):not(.dialog-actions):not(.review-status){display:none!important}.review-status{min-height:44px;margin:0 0 20px;color:var(--ink)}button[data-admin-required="true"]:disabled{opacity:.45;cursor:not-allowed}
 dialog button:disabled{opacity:.45;cursor:default}
+
+.tool-spinner {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  display: none;
+  color: #bcbcbc;
+}
+.tool-spinner i {
+  position: absolute;
+  left: 8px;
+  top: 1px;
+  width: 2px;
+  height: 5px;
+  border-radius: 2px;
+  background: currentColor;
+  transform-origin: 1px 8px;
+  transform: rotate(calc(var(--spoke) * 45deg));
+  opacity: calc(.2 + var(--spoke) * .1);
+  animation: tool-working .8s linear infinite;
+  animation-delay: calc(var(--spoke) * .1s - .8s);
+}
+@keyframes tool-working {
+  from { opacity: 1; }
+  to { opacity: .15; }
+}
+.tool-directory[data-layout=grid] .tool-working .tool-launch > .tool-spinner,
+.tool-directory[data-layout=list] .tool-working .tool-icon > .tool-spinner {
+  display: inline-block;
+}
+.tool-directory[data-layout=list] .tool-working .tool-chevron {
+  display: none;
+}
+.activity-offscreen .tool-spinner i,
+body[data-active-tool]:not([data-active-tool=home]) .tool-spinner i {
+  animation-play-state: paused;
+}
+.footer-powered{display:flex;align-items:center;gap:13px}
+.powered-label{color:#aaa;font:700 10.72px/1.6 "DM Sans",sans-serif;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+.studio-mark{display:inline-flex;align-items:center;gap:8px;color:var(--ink);text-decoration:none}
+.studio-mark img{width:32px;height:32px;display:block;object-fit:contain}
+.studio-name{display:flex;flex-direction:column;gap:2px;font:600 9.76px/.95 "Space Grotesk",sans-serif;letter-spacing:.18em}

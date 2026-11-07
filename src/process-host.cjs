@@ -9,6 +9,7 @@ function createProcessService({
   broker,
   onEvent = () => {},
   onFault = () => {},
+  onActivity = () => {},
   heartbeatMs = 12000,
   startMs = 15000,
   callMs = 30 * 60 * 1000,
@@ -22,6 +23,27 @@ function createProcessService({
     busy = false,
     sequence = 0;
   const pending = new Map();
+  const passiveCalls = new Set([
+    'status',
+    'view',
+    'asset',
+    'source',
+    'query',
+    'quick',
+    'location',
+    'history',
+    'connection',
+  ]);
+  let reportedActivity = false;
+  function reportActivity() {
+    const active =
+      !failed &&
+      !closing &&
+      (busy || [...pending.values()].some((p) => !passiveCalls.has(p.method)));
+    if (active === reportedActivity) return;
+    reportedActivity = active;
+    onActivity(active);
+  }
   const fault = (reason) => {
     if (failed || closing) return;
     failed = true;
@@ -32,6 +54,7 @@ function createProcessService({
       item.reject(error);
     }
     pending.clear();
+    reportActivity();
     child?.kill();
     containment?.close();
     containment = null;
@@ -88,6 +111,7 @@ function createProcessService({
             } else if (packet.type === 'beat') {
               lastBeat = Date.now();
               busy = !!packet.busy;
+              reportActivity();
             } else if (packet.type === 'fault') {
               fault(packet.reason || 'The tool stopped unexpectedly.');
               finish(Error('Tool initialization failed.'));
@@ -103,6 +127,7 @@ function createProcessService({
               pending.delete(packet.id);
               clearTimeout(item.timeout);
               busy = !!packet.busy;
+              reportActivity();
               packet.error
                 ? item.reject(
                     Object.assign(Error(packet.error.message), { code: packet.error.code }),
@@ -166,6 +191,7 @@ function createProcessService({
       const timeout = setTimeout(() => fault('The tool operation timed out.'), callMs);
       timeout.unref();
       pending.set(id, { resolve, reject, method, timeout });
+      reportActivity();
       try {
         child.postMessage({ type: 'call', id, method, args });
       } catch {
@@ -175,6 +201,7 @@ function createProcessService({
   }
   async function close() {
     closing = true;
+    reportActivity();
     clearInterval(timer);
     if (child) {
       const current = child;

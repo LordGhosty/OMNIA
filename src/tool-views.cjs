@@ -10,6 +10,7 @@ function createToolViews({
   onHome,
   onHistory,
   motionEnabled = () => true,
+  resizeEnabled = () => true,
 }) {
   const entries = new Map();
   let active = 'home',
@@ -131,7 +132,7 @@ function createToolViews({
     current.progress = p;
     if (current.frames.length < 4096) current.frames.push(performance.now());
     const ease = 1 - (1 - p) ** 3;
-    if (!window.isMaximized() && !window.isFullScreen()) {
+    if (current.resize && !window.isMaximized() && !window.isFullScreen()) {
       const height = Math.round(
         current.from.height + (current.to.height - current.from.height) * ease,
       );
@@ -171,6 +172,7 @@ function createToolViews({
         from,
         to,
         last: from,
+        resize: resizeEnabled(),
         progress: 0,
         frames: [],
         updates: 0,
@@ -273,7 +275,15 @@ function createToolViews({
       if (closing || moving || window.isDestroyed()) return null;
       const id = active,
         entry = entries.get(id);
-      const image = entry ? (await entry.contents.capturePage()).toDataURL() : null;
+      let image = null;
+      if (entry) {
+        try {
+          const png = await require('./smoke-capture.cjs')(entry.contents);
+          image = 'data:image/png;base64,' + png.toString('base64');
+        } catch {
+          // The sidebar can still open if the compositor has no frame to capture.
+        }
+      }
       return !closing && !moving && active === id ? { id, image } : null;
     },
     cover(id) {

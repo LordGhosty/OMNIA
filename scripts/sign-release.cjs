@@ -1,12 +1,17 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const { hashFile, publicKeyFor, manifestName } = require('../src/validation.cjs');
+const {
+  hashFile,
+  publicKeyFor,
+  manifestName,
+  optionalWindowsFiles,
+} = require('../src/validation.cjs');
 async function signRelease({ root, version, platform, arch, trust, privateKey }) {
-  const key = crypto.createPrivateKey(privateKey),
+  const key = privateKey?.type === 'private' ? privateKey : crypto.createPrivateKey(privateKey),
     publicKey = publicKeyFor(trust);
   if (
-    key.asymmetricKeyType !== 'ed25519' ||
+    !['ed25519', 'rsa'].includes(key.asymmetricKeyType) ||
     !crypto
       .createPublicKey(key)
       .export({ type: 'spki', format: 'der' })
@@ -25,7 +30,9 @@ async function signRelease({ root, version, platform, arch, trust, privateKey })
       if (entry.isDirectory()) await walk(file, relative + '/');
       else if (entry.isFile()) {
         const info = await fs.stat(file);
-        files.push({ path: relative, size: info.size, sha256: await hashFile(file) });
+        const item = { path: relative, size: info.size, sha256: await hashFile(file) };
+        if (platform === 'win32' && optionalWindowsFiles.has(relative)) item.optional = true;
+        files.push(item);
       }
     }
   }
@@ -45,23 +52,19 @@ async function signRelease({ root, version, platform, arch, trust, privateKey })
   );
   const envelope = {
     payload: payload.toString('base64'),
-    signature: crypto.sign(null, payload, key).toString('base64'),
+    signature: crypto
+      .sign(key.asymmetricKeyType === 'rsa' ? 'sha256' : null, payload, key)
+      .toString('base64'),
   };
   await fs.writeFile(path.join(root, 'resources', manifestName), JSON.stringify(envelope) + '\n');
   return files.length;
 }
 async function hook(context) {
   if (process.env.OMNIA_OFFICIAL_RELEASE !== '1') return;
-  const encoded = process.env.OMNIA_RELEASE_PRIVATE_KEY;
-  if (!encoded) throw Error('An official build requires the protected release signing secret.');
   const trust = require('../assets/release-trust.json');
-  const privateKey = {
-    key: Buffer.from(encoded, 'base64'),
-    format: 'pem',
-    passphrase: process.env.OMNIA_RELEASE_KEY_PASSWORD,
-  };
+  const privateKey = require('./release-key.cjs').loadKey();
   const platform = context.electronPlatformName;
-  if (platform === 'win32') {
+  if (platform === 'win32' && trust.mode !== 'release-key') {
     await require('../src/validation.cjs').checkWindowsSignature(
       path.join(context.appOutDir, 'OMNIA.exe'),
       trust,

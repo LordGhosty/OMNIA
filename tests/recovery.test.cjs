@@ -4,6 +4,71 @@ const test = require('node:test'),
   path = require('node:path'),
   os = require('node:os');
 const { createRecovery } = require('../src/recovery.cjs');
+test('startup recovery offers only installed utilities and keeps the exit action correct', async () => {
+  const source = await fs.readFile(path.join(__dirname, '../src/bootstrap.cjs'), 'utf8');
+  for (const installed of [false, true]) {
+    for (const action of ['start', 'exit', ...(installed ? ['recovery'] : [])]) {
+      let prompt,
+        quit = false,
+        opened = false,
+        started = false;
+      const app = {
+        requestSingleInstanceLock: () => true,
+        getPath: () => os.tmpdir(),
+        getVersion: () => '0.0.2',
+        whenReady: async () => {},
+        quit: () => {
+          quit = true;
+        },
+      };
+      const dialog = {
+        showMessageBox: async (options) => {
+          prompt = options;
+          return { response: action === 'start' ? 0 : action === 'exit' ? options.cancelId : 1 };
+        },
+        showErrorBox: () => assert.fail('Unexpected recovery error'),
+      };
+      require('node:vm').runInNewContext(source, {
+        process: { platform: 'win32', execPath: process.execPath, env: {} },
+        module: { exports: {} },
+        require(name) {
+          if (name === 'electron')
+            return {
+              app,
+              dialog,
+              shell: {
+                openPath: async () => {
+                  opened = true;
+                  return '';
+                },
+              },
+            };
+          if (name === 'node:path') return path;
+          if (name === 'node:fs') return { existsSync: () => installed };
+          if (name === './recovery.cjs')
+            return {
+              createRecovery: () => ({ begin: async () => ({ attempts: 3 }) }),
+              writeJSON: async () => {},
+            };
+          if (name === './main.cjs') {
+            started = true;
+            return {};
+          }
+          if (name.endsWith('/tools.json')) return [];
+          if (name.endsWith('.json')) return {};
+          throw Error('Unexpected module ' + name);
+        },
+      });
+      await new Promise((resolve) => setImmediate(resolve));
+      assert.equal(prompt.buttons.includes('Open recovery'), installed);
+      assert.equal(prompt.buttons[prompt.cancelId], 'Exit');
+      assert.equal(started, action === 'start');
+      assert.equal(quit, action !== 'start');
+      assert.equal(opened, action === 'recovery');
+    }
+  }
+});
+
 test('recovery counts unfinished starts and resets the count only after readiness', async (t) => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'omnia-recovery-'));
   t.after(() => fs.rm(directory, { recursive: true, force: true }));

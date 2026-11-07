@@ -15,7 +15,7 @@ internal static class Recovery
     private static void Main(string[] args)
     {
         if (args.Length == 2 && args[0] == "--check") {
-            Environment.ExitCode = Publisher.Verify(args[1]) ? 0 : 1;
+            Environment.ExitCode = Publisher.Verify(args[1], "installer") ? 0 : 1;
             return;
         }
         Application.EnableVisualStyles();
@@ -47,14 +47,14 @@ internal static class Recovery
                 string file = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                     "OMNIA", "recovery", "previous-setup.exe");
-                if (String.IsNullOrEmpty(Publisher.Pins) || !File.Exists(file)) {
+                if (!Publisher.Configured || !File.Exists(file)) {
                     status.Text = "No verified recovery installer is available. Use the official download.";
                     return;
                 }
                 // Keep the verified path from being replaced before the installer starts.
                 using (var held = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read)) {
-                    status.Text = "Verifying the publisher signature...";
-                    if (!await Task.Run(() => Publisher.Verify(file))) {
+                    status.Text = "Verifying the release signature...";
+                    if (!await Task.Run(() => Publisher.Verify(file, "installer"))) {
                         status.Text = "Verification failed. This installer will not run.";
                         return;
                     }

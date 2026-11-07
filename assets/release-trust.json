@@ -1,6 +1,8 @@
 {
   "schema": 1,
-  "publicKey": "",
+  "publicKey": "-----BEGIN PUBLIC KEY-----\nMIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEA5co7IAoJylFmjYA74fUG\njUlZaJ/b0gdtVhD++pajrdH7WMwvLzYFcSoAcHyF93xFwEnhNQTl+m7IVAj+aLP2\nOBTGsjiY+2vt8It7h8Y+gztbThVamEGWJkHqmhsKmW5F95jaPqVfAnOK01SD8cbE\nKNIwsbKtFiyRVPvV8uP0u1SiNGtGr1RRlC+jTJHPwMhd1rYWV+HA2UpU5CiRsTs5\nE//kqpRYfKGeFT5sJHs1unEVFAJ4NSmDlWumpkgk3UQPIrKP0gd4t9n2k/+/ZlHV\n30reOhlwD/k8Bz+EbNYaPj9NIYH86ahsgPXb9Dk/4AWndVKtCYoWz6dkkKGTwPSq\nMf9swOyS8mJK5dGqHPnGYuinTMx2ABviTo9yq3cg6Jcg9IXFMxI1SIf65yY8Yqsi\nXbj4VO8BjR77kFzmMsMLxzWg8LHvMMqXXlMK5Y8tKX+Qk6GKpgiE/e/5tBJRBQaK\n9P+lI6agkbVO4xXDOHTgZpLxnwvewKctlWlKfSOxnZ47awxb2Af6TQZFbiIkyRQs\nhsf+Pf29o6UKxS0TCY4AeHJ9bieeAK2wVkdg8wNwOk2JuPGl96n1XGQVEZgcyzRa\nZAPFr88hC/6THLSL6aGhRsrqt5YiXg0gQewgDWcMS7ICpLYYPZMyShcKl5BwfvO1\nT1TA/574XI/fWps7RwRhLP0CAwEAAQ==\n-----END PUBLIC KEY-----\n",
   "windowsPublisherName": "",
-  "windowsCertificateSha256": []
+  "windowsCertificateSha256": [],
+  "mode": "release-key",
+  "repository": "LordGhosty/OMNIA"
 }

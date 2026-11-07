@@ -16,27 +16,42 @@ async function start() {
     version: app.getVersion(),
     buildId: require('../assets/build-id.json').id,
     repository: config.repository,
-    verify: (file) => require('./validation.cjs').checkWindowsSignature(file, trust),
+    trust,
+    verify: async (file) => {
+      if (trust.mode !== 'release-key')
+        return require('./validation.cjs').checkWindowsSignature(file, trust);
+      const { readEnvelope, verifyArtifact } = require('./release-signature.cjs');
+      return verifyArtifact(file, await readEnvelope(file + '.sig'), trust);
+    },
   });
   const state = await recovery.begin();
   if (state.attempts >= 3) {
     await app.whenReady();
+    const recoveryFile = path.join(path.dirname(process.execPath), 'OMNIA Recovery.exe');
+    const hasRecovery = process.platform === 'win32' && require('node:fs').existsSync(recoveryFile);
+    const buttons = ['Start without tools', ...(hasRecovery ? ['Open recovery'] : []), 'Exit'];
     const choice = await dialog.showMessageBox({
       type: 'warning',
       title: 'OMNIA recovery',
       message: 'OMNIA could not finish starting.',
-      detail:
-        'Start with all tools quarantined, open the recovery utility, or exit. Your files will not be changed.',
-      buttons: ['Start without tools', 'Open recovery', 'Exit'],
+      detail: hasRecovery
+        ? 'Start with all tools quarantined, open the recovery utility, or exit.'
+        : 'Start with all tools quarantined, or run the official installer to repair OMNIA.',
+      buttons,
       defaultId: 0,
-      cancelId: 2,
+      cancelId: buttons.length - 1,
     });
-    if (choice.response === 2) {
+    if (choice.response === buttons.length - 1) {
       app.quit();
       return;
     }
     if (choice.response === 1) {
-      await shell.openPath(path.join(path.dirname(process.execPath), 'OMNIA Recovery.exe'));
+      const error = await shell.openPath(recoveryFile);
+      if (error)
+        dialog.showErrorBox(
+          'Recovery could not open',
+          'Run the official installer to repair OMNIA.',
+        );
       app.quit();
       return;
     }

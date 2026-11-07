@@ -26,12 +26,17 @@ test('volume scans reuse inventory and report capacity separately from logical f
   });
   try {
     await fs.writeFile(path.join(root, 'document.txt'), 'abc');
-    assert.equal((await service.refresh()).loading, false);
+    const detection = service.refresh();
+    assert.equal(service.isBusy(), true);
+    assert.equal((await detection).loading, false);
+    assert.equal(service.isBusy(), false);
     const initial = await service.startVolume('volume');
+    assert.equal(service.isBusy(), true);
     assert.equal(initial.scan.capacity.free, 400);
     assert.equal(initial.scan.capacity.used, 600);
     assert.equal(initial.starting, false);
     const result = await finish(service);
+    assert.equal(service.isBusy(), false);
     assert.equal(result.bytes, 3);
     assert.equal(result.capacity.total, 1000);
     assert.equal(reads, 1);

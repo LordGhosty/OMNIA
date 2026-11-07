@@ -105,6 +105,7 @@ function ipcAccess(tool, channel, action, data = {}, ownerOf = () => undefined) 
         'history',
         'open',
         'tool-info',
+        'tool-activity',
         'tool-view',
         'admin',
         'updates',

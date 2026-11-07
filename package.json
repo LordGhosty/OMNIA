@@ -1,6 +1,6 @@
 {
   "name": "omnia",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "OMNIA â€” a local-first desktop multitool",
   "main": "src/bootstrap.cjs",
   "author": "OMNIA",
@@ -49,7 +49,7 @@
     ],
     "win": {
       "target": "nsis",
-      "signExecutable": false,
+      "signExecutable": true,
       "icon": "assets/icon.ico",
       "extraResources": [
         {
@@ -87,7 +87,7 @@
           "to": "bin/omnia-process-guard.exe"
         }
       ],
-      "verifyUpdateCodeSignature": true,
+      "verifyUpdateCodeSignature": false,
       "extraFiles": [
         {
           "from": "vendor/win32/OMNIA Recovery.exe",
@@ -97,7 +97,13 @@
           "from": "vendor/win32/OMNIA Validator.exe",
           "to": "OMNIA Validator.exe"
         }
-      ]
+      ],
+      "signtoolOptions": {
+        "sign": "./scripts/sign-artifact.cjs",
+        "signingHashAlgorithms": [
+          "sha256"
+        ]
+      }
     },
     "portable": {
       "artifactName": "OMNIA-${version}-Windows.exe"
@@ -164,7 +170,16 @@
       "node_modules/exiftool-vendored.exe/**/*",
       "node_modules/exiftool-vendored.pl/**/*"
     ],
-    "afterAllArtifactBuild": "scripts/release-files.cjs"
+    "afterAllArtifactBuild": "scripts/release-files.cjs",
+    "forceCodeSigning": false,
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "LordGhosty",
+        "repo": "OMNIA",
+        "releaseType": "release"
+      }
+    ]
   },
   "dependencies": {
     "electron-updater": "^6.8.9",

@@ -1,15 +1,17 @@
-const fs = require('node:fs');
+const fs = process.versions.electron ? require('original-fs') : require('node:fs');
 const fsp = fs.promises;
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { execFile } = require('node:child_process');
 const { Worker, isMainThread, parentPort, workerData } = require('node:worker_threads');
 const manifestName = 'omnia-release.json';
+const optionalWindowsFiles = new Set(['OMNIA Recovery.exe', 'OMNIA Validator.exe']);
 const invalid = (reason) => ({ state: 'unvalidated', label: 'UNVALIDATED SOFTWARE', reason });
 function publicKeyFor(trust) {
   if (trust?.schema !== 1 || !trust.publicKey)
     throw Error('Official release signing has not been configured.');
   const key = crypto.createPublicKey(trust.publicKey);
+  if (trust.mode === 'release-key') return require('./release-signature.cjs').publicKey(trust);
   if (key.asymmetricKeyType !== 'ed25519') throw Error('Unsupported release signing key.');
   return key;
 }
@@ -64,7 +66,7 @@ async function checkWindowsSignature(executable, trust) {
   return result.subject;
 }
 /** Windows setup adds the uninstaller after the application inventory is signed. */
-async function checkWindowsFiles(root, files, trust, verify) {
+async function checkWindowsFiles(root, files, trust, verify, version) {
   const folders = [root];
   let entries = 0;
   while (folders.length) {
@@ -81,8 +83,18 @@ async function checkWindowsFiles(root, files, trust, verify) {
         !files.has(name) &&
         /\.(?:exe|dll|node|asar|js|cjs|mjs|ps1|cmd|bat|vbs|com|scr)$/i.test(name)
       ) {
-        if (name !== 'uninstall omnia.exe') throw Error('Unlisted program file: ' + name);
-        await verify(file, trust);
+        if (
+          name !== 'uninstall omnia.exe' &&
+          !(trust.mode === 'release-key' && name === 'resources/elevate.exe')
+        )
+          throw Error('Unlisted program file: ' + name);
+        if (trust.mode === 'release-key') {
+          const { readEnvelope, verifyArtifact } = require('./release-signature.cjs');
+          await verifyArtifact(file, await readEnvelope(file + '.sig'), trust, {
+            version,
+            kind: name === 'resources/elevate.exe' ? 'update-helper' : 'uninstaller',
+          });
+        } else await verify(file, trust);
       }
     }
   }
@@ -108,7 +120,7 @@ async function verifyRelease({
       throw Error('The release signature is missing.');
     const payload = Buffer.from(envelope.payload, 'base64'),
       signature = Buffer.from(envelope.signature, 'base64');
-    if (signature.length !== 64 || !crypto.verify(null, payload, key, signature))
+    if (!crypto.verify(key.asymmetricKeyType === 'rsa' ? 'sha256' : null, payload, key, signature))
       throw Error('The release signature does not match the trusted OMNIA key.');
     const manifest = JSON.parse(payload.toString('utf8'));
     if (
@@ -138,9 +150,20 @@ async function verifyRelease({
         !/^[a-f0-9]{64}$/.test(item.sha256)
       )
         throw Error('Invalid release file entry.');
+      if (
+        item.optional !== undefined &&
+        (item.optional !== true || platform !== 'win32' || !optionalWindowsFiles.has(name))
+      )
+        throw Error('Invalid optional release file.');
       seen.add(name.toLowerCase());
-      const file = path.join(resolvedRoot, ...name.split('/')),
-        real = await fsp.realpath(file);
+      const file = path.join(resolvedRoot, ...name.split('/'));
+      try {
+        await fsp.lstat(file);
+      } catch (error) {
+        if (item.optional && error.code === 'ENOENT') continue;
+        throw error;
+      }
+      const real = await fsp.realpath(file);
       if (real !== file) throw Error('A release file was redirected.');
       const info = await fsp.stat(file);
       if (!info.isFile() || info.size !== item.size || (await hashFile(file)) !== item.sha256)
@@ -153,15 +176,22 @@ async function verifyRelease({
       .toLowerCase();
     if (!seen.has('resources/app.asar') || !seen.has(executablePath))
       throw Error('The signature does not cover the app and its executable.');
-    if (platform === 'win32') await checkWindowsFiles(resolvedRoot, seen, trust, windowsCheck);
+    if (platform === 'win32')
+      await checkWindowsFiles(resolvedRoot, seen, trust, windowsCheck, version);
     const publisher =
-      platform === 'win32' ? await windowsCheck(executable, trust) : 'OMNIA release key';
+      platform === 'win32' && trust.mode !== 'release-key'
+        ? await windowsCheck(executable, trust)
+        : 'OMNIA release key';
     return {
       state: 'validated',
-      label: 'VALIDATED SOFTWARE',
+      label: trust.mode === 'release-key' ? 'RELEASE SIGNATURE VERIFIED' : 'VALIDATED SOFTWARE',
       reason:
         'The signed release files match the trusted OMNIA release key.' +
-        (platform === 'win32' ? ' Windows also confirmed the pinned publisher certificate.' : ''),
+        (platform === 'win32'
+          ? trust.mode === 'release-key'
+            ? ' Windows publisher identity is not certified.'
+            : ' Windows also confirmed the pinned publisher certificate.'
+          : ''),
       publisher,
       version,
       checkedAt: new Date().toISOString(),
@@ -232,4 +262,5 @@ module.exports = {
   publicKeyFor,
   checkWindowsSignature,
   manifestName,
+  optionalWindowsFiles,
 };

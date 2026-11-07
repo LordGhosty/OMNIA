@@ -15,7 +15,7 @@ Versions and dependency integrity hashes are pinned in package-lock.json. Runtim
 - yt-dlp release and dependency/licensing information: https://github.com/yt-dlp/yt-dlp/tree/2026.10.21
 - Deno release and source: https://github.com/denoland/deno/tree/v2.9.8
 
-This is a local development build. Before public binary distribution, accompany the exact bundled GPL FFmpeg/FFprobe builds with corresponding source and build information, and preserve their license notices. A generic upstream link alone is not a substitute for the applicable source-distribution requirements.
+The 0.0.3 upload folder contains OMNIA’s source archive and bundled dependency notices. Collect the corresponding source and build information for the exact FFmpeg and FFprobe binaries before public binary distribution. See the build identifiers below.
 
 The image/file tools add Sharp 0.35.5 (Apache-2.0), its platform-specific libvips build and codec dependencies, exiftool-vendored 39.0.1 (MIT wrapper), the vendored ExifTool distribution (13.59.3 npm binary package; ExifTool is licensed under the same terms as Perl), and file-type 22.2.0 (MIT). The wrapper's MIT license is not the license of the embedded ExifTool/Perl runtime. Sharp's bundled libvips and codecs likewise carry their own notices and source/relinking requirements. Exact transitive versions are locked in package-lock.json; native package license files remain alongside unpacked native files in installed resources. The image workers load these native helpers from the signed release's file inventory when official signing is configured.
 
