@@ -145,8 +145,7 @@ function createUpdates({
           await verifyDownloaded(info.downloadedFile);
           if (
             ownKey &&
-            feed &&
-            (feed.version !== downloadedVersion ||
+            (feed?.version !== downloadedVersion ||
               feed.sha256 !==
                 require('./release-signature.cjs').verifyEnvelope(envelope, trust).sha256)
           )

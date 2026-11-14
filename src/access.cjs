@@ -78,7 +78,7 @@ function httpAccess(scope, route, method, data) {
     if (scope === 'speed' && data && route === '/api/network/run' && data.kind !== 'speed')
       denied();
   } else if (route.startsWith('/api/files/preview/')) {
-    if (!['images', 'metadata', 'inspector'].includes(scope)) denied();
+    if (!['images', 'metadata', 'inspector', 'palette'].includes(scope)) denied();
   } else if (route.startsWith('/api/')) {
     if (!media.has(scope)) denied();
     if (data?.tool && scope !== 'media' && data.tool !== scope) denied();
@@ -130,7 +130,7 @@ function ipcAccess(tool, channel, action, data = {}, ownerOf = () => undefined) 
   if (channel === 'admin' && (action === 'status' || (action === 'enable' && adminActions[tool])))
     return;
   if (channel === 'network-settings' && tool === 'network') return;
-  const expected = ['images', 'metadata', 'inspector'].includes(tool)
+  const expected = ['images', 'metadata', 'inspector', 'palette'].includes(tool)
     ? 'files'
     : ['rename', 'duplicates', 'search'].includes(tool)
       ? 'file-tools'

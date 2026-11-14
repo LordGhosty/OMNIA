@@ -202,7 +202,9 @@
     $('#output-summary').textContent = item.output
       ? `Original ${size(item.info.bytes)} → output ${size(info.bytes)} · ${info.format.toUpperCase()}. Save copy to keep this result.`
       : '';
-    if (tool === 'images') {
+    if (tool === 'palette') {
+      window.renderPalette(item.palette);
+    } else if (tool === 'images') {
       $('#image-options').hidden = !results.some((r) => r.info && !r.error);
       $('#image-crop').hidden = !!item.output;
       $('#edit-original').hidden = !item.output;
@@ -277,6 +279,9 @@
     }
     $('#image-preview')?.removeAttribute('src');
     for (const id of [
+      'palette-chart',
+      'palette-tower',
+      'palette-count',
       'metadata-fields',
       'inspection-details',
       'header-preview',
@@ -316,7 +321,15 @@
       reset();
       sources = files;
       queue();
-      await run(tool === 'images' ? 'load' : tool === 'metadata' ? 'metadata-read' : 'inspect');
+      await run(
+        tool === 'images'
+          ? 'load'
+          : tool === 'metadata'
+            ? 'metadata-read'
+            : tool === 'palette'
+              ? 'palette'
+              : 'inspect',
+      );
       const rejected = results.filter((item) => item.error);
       if (rejected.length)
         window.omniaFeedback.reject(

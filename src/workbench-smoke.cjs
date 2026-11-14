@@ -66,6 +66,19 @@ module.exports = async ({ window, views, navigate, dir }) => {
   }
   try {
     dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [source] });
+    await navigate('palette');
+    await drop('palette', [source]);
+    if (
+      !(await js(
+        'palette',
+        "return d.querySelectorAll('#palette-tower button').length > 0 && !!d.querySelector('#palette-chart [mask]');",
+      ))
+    )
+      throw Error('Palette did not render the selected image colours.');
+    await js('palette', "d.querySelector('.palette-heading').scrollIntoView({block:'center'});");
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    await screenshot('colour-palette.png');
+    await clear('palette');
     await navigate('images');
     await screenshot('image-drop-area.png');
     await js('images', `d.querySelector('#choose-files').click();`);

@@ -161,5 +161,14 @@
     "tags": "KEY PAIRS + FINGERPRINTS + EXPORT",
     "insignia": "key",
     "page": "ssh.html"
+  },
+  {
+    "id": "palette",
+    "name": "Colour Palette",
+    "category": "Images",
+    "description": "Find the dominant colours in a photo",
+    "tags": "SWATCHES + HEX",
+    "insignia": "eyedropper",
+    "page": "palette.html"
   }
 ]

@@ -108,9 +108,7 @@ async function convert(job, options = {}) {
     decoded.subarray(frameSize),
     'both frames look exactly the same',
   );
-  assert.ok(
-    Math.abs(info.frames.reduce((sum, f) => sum + Number(f.pkt_duration_time), 0) - 1) < 0.02,
-  );
+  assert.ok(Math.abs(info.frames.reduce((sum, f) => sum + Number(f.duration_time), 0) - 1) < 0.02);
   return { stream, decoded, bytes };
 }
 test('PNG, JPEG, WebP, BMP and TIFF produce motionless looping GIFs with exact crops', async () => {

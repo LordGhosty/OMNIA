@@ -17,8 +17,8 @@ function binaries() {
   const local = path.join(__dirname, '..', 'vendor', process.platform);
   const bundled = packaged && fs.existsSync(path.join(packaged, `ffmpeg${suffix}`));
   return {
-    ffmpeg: bundled ? path.join(packaged, `ffmpeg${suffix}`) : require('ffmpeg-static'),
-    ffprobe: bundled ? path.join(packaged, `ffprobe${suffix}`) : require('ffprobe-static').path,
+    ffmpeg: path.join(bundled ? packaged : local, `ffmpeg${suffix}`),
+    ffprobe: path.join(bundled ? packaged : local, `ffprobe${suffix}`),
     ytdlp: path.join(bundled ? packaged : local, `yt-dlp${suffix}`),
     deno: path.join(bundled ? packaged : local, `deno${suffix}`),
   };

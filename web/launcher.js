@@ -173,23 +173,40 @@ document.querySelectorAll('[data-tool]').forEach((button) =>
   }),
 );
 const updateDialog = document.querySelector('#updates-dialog');
+const updatesButton = document.querySelector('#updates');
+const updateLabel = document.createElement('span');
+updatesButton.append(updateLabel);
 function updateState(state) {
   document.querySelector('#update-status').textContent = state.message;
+  const available = state.state === 'available';
+  const ready = state.state === 'downloaded';
+  updateLabel.textContent = available ? 'Update available' : ready ? 'Restart to update' : '';
+  updatesButton.title = updateLabel.textContent || 'Updates';
+  updatesButton.setAttribute('aria-label', updatesButton.title);
+  document.querySelector('#check-updates').hidden = available || ready;
   document.querySelector('#check-updates').disabled =
     !state.configured || !['idle', 'available', 'error'].includes(state.state);
-  document.querySelector('#download-update').hidden = state.state !== 'available';
-  document.querySelector('#install-update').hidden = state.state !== 'downloaded';
-  document
-    .querySelector('#updates')
-    .classList.toggle('update-available', ['available', 'downloaded'].includes(state.state));
+  document.querySelector('#download-update').hidden = !available;
+  document.querySelector('#install-update').hidden = !ready;
+  updatesButton.classList.toggle('update-available', available || ready);
 }
-document.querySelector('#updates').addEventListener('click', async () => {
-  updateDialog.showModal();
-  updateState(
-    window.omnia
-      ? await window.omnia.updates('status')
-      : { configured: false, message: 'Updates are available in the installed app.' },
-  );
+updatesButton.addEventListener('click', async () => {
+  updatesButton.disabled = true;
+  try {
+    const state = window.omnia
+      ? await window.omnia.updates('open')
+      : { configured: false, message: 'Updates are available in the installed app.' };
+    if (state) {
+      updateState(state);
+      updateDialog.showModal();
+    }
+  } finally {
+    updatesButton.disabled = false;
+  }
+});
+updateDialog.addEventListener('close', () => window.omnia?.updates('close'));
+window.addEventListener('omnia:settings-dismiss', () => {
+  if (updateDialog.open) updateDialog.close();
 });
 document.querySelector('#close-updates').addEventListener('click', () => updateDialog.close());
 for (const [id, action] of [
@@ -205,6 +222,7 @@ for (const [id, action] of [
     }
   });
 window.omnia?.onUpdate(updateState);
+window.omnia?.updates('status').then(updateState);
 const shield = document.querySelector('#admin-shield');
 function adminState(state) {
   shield.disabled = !state.supported || state.state === 'requesting';

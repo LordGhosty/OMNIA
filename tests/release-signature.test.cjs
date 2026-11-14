@@ -90,6 +90,7 @@ test('own-key updater verifies GitHub sidecars before becoming installable', asy
   const emitter = new EventEmitter();
   let installed = 0;
   emitter.quitAndInstall = () => installed++;
+  emitter.checkForUpdates = async () => emitter.emit('update-available', { version: '0.0.4' });
   const update = require('../src/updates.cjs').createUpdates({
     app: { isPackaged: true, getVersion: () => '0.0.3' },
     window: { isDestroyed: () => true },
@@ -101,6 +102,8 @@ test('own-key updater verifies GitHub sidecars before becoming installable', asy
     isBusy: () => false,
     recovery: { prepare: async () => {} },
     fetcher: async (url) => {
+      if (url.endsWith('/releases/latest/download/OMNIA-update.json'))
+        return new Response(JSON.stringify(envelope));
       assert.equal(
         url,
         'https://github.com/fixture/omnia/releases/download/v0.0.4/OMNIA-0.0.4-Setup.exe.sig',
@@ -109,6 +112,11 @@ test('own-key updater verifies GitHub sidecars before becoming installable', asy
     },
   });
   const receive = emitter.listeners('update-downloaded')[0];
+  await receive({ version: '0.0.4', downloadedFile: file });
+  assert.equal((await update('status')).state, 'error');
+  await update('check');
+  await new Promise(setImmediate);
+  assert.equal((await update('status')).state, 'available');
   await receive({ version: '0.0.4', downloadedFile: file });
   assert.equal((await update('status')).state, 'downloaded');
   await fs.appendFile(file, 'changed after download');

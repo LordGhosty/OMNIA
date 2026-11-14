@@ -130,6 +130,7 @@ jobs:
             release/OMNIA-update.json
             release/latest*.yml
             release/OMNIA-source-*.tar.gz
+            release/OMNIA-FFmpeg-Windows-sources.tar
   release:
     if: github.event_name == 'workflow_dispatch' && (inputs.publish || inputs.beta)
     needs: package

@@ -178,6 +178,7 @@ else {
       const group = require('./tool-group.cjs').createToolGroup;
       workbench = group(
         {
+          palette: await createService(['palette'], 'workbench'),
           images: await createService(['images'], 'workbench'),
           metadata: await createService(['metadata'], 'workbench'),
           inspector: await createService(['inspector'], 'workbench'),
@@ -751,7 +752,7 @@ else {
         if (action === 'drop') return workbench.select(data.tool, data.paths);
         if (action === 'clear') return workbench.clear(data.tool);
         if (action === 'choose') {
-          if (!['images', 'metadata', 'inspector'].includes(data.tool))
+          if (!['images', 'metadata', 'inspector', 'palette'].includes(data.tool))
             throw Error('Unknown file tool.');
           const result = await dialog.showOpenDialog(window, {
             title: 'Choose ' + (data.tool === 'inspector' ? 'a file' : 'images'),
@@ -798,8 +799,14 @@ else {
         recovery: require('./bootstrap.cjs').get(),
       });
       handle('omnia:updates', async (event, action) => {
-        if (trusted(event) && ['status', 'check', 'download', 'install'].includes(action))
-          return updates(action);
+        if (!trusted(event) || event.sender !== window.webContents) return;
+        if (action === 'open') {
+          if (views.covered() || !views.cover(views.active())) return null;
+          const status = await updates('status');
+          return status.state === 'idle' || status.state === 'error' ? updates('check') : status;
+        }
+        if (action === 'close') return views.uncover();
+        if (['status', 'check', 'download', 'install'].includes(action)) return updates(action);
       });
       ipcMain.on('omnia:minimize', (event) => {
         if (trusted(event) && event.sender === window.webContents) window.minimize();

@@ -511,6 +511,7 @@ async function startServer({
           '/drivers.js': 'web/drivers.js',
           '/drivers.css': 'web/drivers.css',
           '/directory.js': 'web/directory.js',
+          '/palette.js': 'web/palette.js',
           '/workbench.js': 'web/workbench.js',
           '/workbench.css': 'web/workbench.css',
           '/': 'web/launcher.html',

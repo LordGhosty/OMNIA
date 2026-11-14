@@ -24,6 +24,7 @@ async function fetchAsset(url, hash, output) {
   await fs.writeFile(output, bytes);
 }
 async function prepare() {
+  await require('./ffmpeg.cjs').prepare();
   await fs.mkdir(directory, { recursive: true });
   const base = 'https://github.com/yt-dlp/yt-dlp/releases/download/2026.10.21/';
   const name = windows ? 'yt-dlp.exe' : 'yt-dlp_linux';

@@ -306,6 +306,22 @@ async function main() {
           throw Error('The selected image changed while being read.');
         result.info = await imageInfo(working);
         let final = working;
+        if (action === 'palette') {
+          const pixels = await sharp(working, { limitInputPixels: PIXELS, failOn: 'warning' })
+            .resize({
+              width: 256,
+              height: 256,
+              fit: 'inside',
+              withoutEnlargement: true,
+              kernel: 'nearest',
+            })
+            .toColourspace('srgb')
+            .ensureAlpha()
+            .raw()
+            .timeout({ seconds: 20 })
+            .toBuffer();
+          result.palette = require('./palette.cjs').dominantColours(pixels);
+        }
         if (action === 'convert') {
           const selected = { ...options, crop: options.crops?.[source.id] || null };
           final = path.join(

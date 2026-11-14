@@ -17,13 +17,14 @@ module.exports = async ({ outDir, artifactPaths }) => {
   }
   const sums = path.join(outDir, 'SHA256SUMS.txt');
   const lines = [];
+  const mediaSource = await require('./ffmpeg-sources.cjs').archive(outDir);
   const signatures = [];
   if (
     process.env.OMNIA_OFFICIAL_RELEASE === '1' &&
     require('../assets/release-trust.json').mode === 'release-key'
   )
     signatures.push(path.join(outDir, 'OMNIA-update.json'));
-  for (const file of [setup, validator]) {
+  for (const file of [setup, validator, mediaSource]) {
     lines.push((await hashFile(file)) + '  ' + path.basename(file));
     try {
       await fs.access(file + '.sig');
@@ -31,5 +32,5 @@ module.exports = async ({ outDir, artifactPaths }) => {
     } catch {}
   }
   await fs.writeFile(sums, lines.join('\n') + '\n');
-  return [validator, sums, ...signatures];
+  return [validator, sums, mediaSource, ...signatures];
 };

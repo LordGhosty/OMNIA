@@ -1,5 +1,10 @@
 // Tool insignias.
 const insigniaDesigns = {
+  eyedropper: () =>
+    makeSVG(
+      'insignia-eyedropper',
+      '<g stroke-linejoin="round" stroke-linecap="round"><path d="m49 43 22-22 8 8-22 22-10 3zM66 19l4-4 3 3 10-10a6 6 0 0 1 9 9L82 27l3 3-4 4z"/><path d="m54 44 10-10"/><path class="pipette-drop" d="M46 55s-4 4-4 6a4 4 0 0 0 8 0c0-2-4-6-4-6z" fill="currentColor" stroke="none"/></g>',
+    ),
   key: () =>
     makeSVG(
       'insignia-key',

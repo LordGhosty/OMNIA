@@ -265,9 +265,7 @@ test('GIF has the requested crop, frame rate, trim duration and an inline previe
   assert.equal(Number(info.streams[0].nb_read_frames), 10);
   assert.equal(info.streams.length, 1);
   assert.ok(
-    Math.abs(
-      info.frames.reduce((sum, frame) => sum + Number(frame.pkt_duration_time || 0), 0) - 1,
-    ) < 0.15,
+    Math.abs(info.frames.reduce((sum, frame) => sum + Number(frame.duration_time), 0) - 1) < 0.15,
   );
   const preview = await req(`/api/jobs/${job.id}/result`);
   assert.equal(preview.headers.get('content-type'), 'image/gif');
@@ -366,9 +364,7 @@ test('50 FPS GIF preserves fifty frames and exact 20 ms delays without changing 
   assert.equal(done.state, 'done', done.error);
   const info = await output(done, 'gif');
   assert.equal(Number(info.streams[0].nb_read_frames), 50);
-  assert.ok(
-    info.frames.every((frame) => Math.abs(Number(frame.pkt_duration_time) - 0.02) < 0.0001),
-  );
+  assert.ok(info.frames.every((frame) => Math.abs(Number(frame.duration_time) - 0.02) < 0.0001));
   for (const fps of [60, 120])
     assert.equal(
       (await post('/api/jobs', { sourceId: job.id, format: 'gif', duration: 1, fps })).status,
