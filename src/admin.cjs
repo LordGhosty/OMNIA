@@ -45,6 +45,12 @@ function launchScript(script) {
   const packed = require('node:zlib').gzipSync(Buffer.from(script, 'utf8')).toString('base64');
   return `$m=[IO.MemoryStream]::new([Convert]::FromBase64String('${packed}'));$g=[IO.Compression.GZipStream]::new($m,[IO.Compression.CompressionMode]::Decompress);$r=[IO.StreamReader]::new($g,[Text.Encoding]::UTF8);try{$s=$r.ReadToEnd()}finally{$r.Dispose();$g.Dispose();$m.Dispose()};& ([ScriptBlock]::Create($s))`;
 }
+function elevationCommand(script) {
+  // The compressed bootstrap is ASCII and contains no double quotes.
+  if (!/^[\x20-\x7e]+$/.test(script) || script.includes('"'))
+    throw Error('Invalid administrator bootstrap.');
+  return `try{Start-Process -FilePath ${quote(ps())} -ArgumentList @('-NoLogo','-NoProfile','-NonInteractive','-Command',${quote('"' + script + '"')}) -Verb RunAs -WindowStyle Hidden -ErrorAction Stop | Out-Null}catch{exit 1}`;
+}
 /** Owns one elevated helper session; only fixed, allowlisted operations cross its pipe. */
 function createAdmin({ onChange = () => {}, launch } = {}) {
   let socket,
@@ -87,8 +93,7 @@ function createAdmin({ onChange = () => {}, launch } = {}) {
       const pipe = 'omnia-admin-' + crypto.randomUUID(),
         token = crypto.randomBytes(32).toString('hex');
       const script = launchScript(workerScript(pipe, token, process.pid)),
-        encoded = Buffer.from(script, 'utf16le').toString('base64');
-      const command = `try{Start-Process -FilePath ${quote(ps())} -ArgumentList @('-NoLogo','-NoProfile','-NonInteractive','-EncodedCommand','${encoded}') -Verb RunAs -WindowStyle Hidden -ErrorAction Stop | Out-Null}catch{exit 1}`;
+        command = elevationCommand(script);
       if (command.length > 30000) throw Error('Administrator helper is too large to launch.');
       await new Promise((resolve, reject) => {
         let settled = false;
@@ -204,4 +209,4 @@ function createAdmin({ onChange = () => {}, launch } = {}) {
   }
   return { status, enable, disable, run, close: disable };
 }
-module.exports = { createAdmin, workerScript, launchScript, allowed };
+module.exports = { createAdmin, workerScript, launchScript, elevationCommand, allowed };

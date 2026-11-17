@@ -31,3 +31,4 @@ html[data-detail-motion=on] #palette-tower button { animation: palette-row 220ms
 @keyframes palette-reveal { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
 @keyframes palette-row { from { opacity: 0; transform: translateY(3px); } }
 @media(max-width: 650px) { .palette-layout { grid-template-columns: 1fr; } }
+.ico-sizes{border:0;padding:0;margin:0 0 20px}.ico-sizes legend{font:11px var(--mono);color:var(--muted);margin-bottom:12px}

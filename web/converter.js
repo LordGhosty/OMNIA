@@ -59,7 +59,7 @@ function setBusy(value) {
   busy = value;
   document
     .querySelectorAll(
-      '.conversion-panel button,.conversion-panel input,.conversion-panel select,.conversion-panel fieldset',
+      '.conversion-panel button,.conversion-panel input,.conversion-panel select,.conversion-panel textarea,.conversion-panel fieldset',
     )
     .forEach((control) => {
       control.disabled = value;
@@ -101,6 +101,7 @@ function clearSource() {
   $('#convert').disabled = true;
   $('#source-summary').hidden = true;
   window.omniaCrop?.reset();
+  window.omniaGif?.reset();
   clearResult();
   const audio = $('#audio-source-preview');
   if (audio) {
@@ -131,6 +132,7 @@ function sourceReady(job) {
   const size = job.media.video ? `${job.media.width} × ${job.media.height}` : '';
   $('#source-summary').textContent = [job.name, seconds, size].filter(Boolean).join(' / ');
   if (tool === 'gif' || tool === 'mp4') window.omniaCrop.load(job);
+  window.omniaGif?.load(job);
   if (tool === 'mp3') {
     $('#edit-start').value = 0;
     $('#edit-duration').value = 0;
@@ -362,6 +364,12 @@ $('#convert').addEventListener('click', async () => {
     for (const key of source.media.still ? ['width'] : ['start', 'duration', 'width', 'fps'])
       options[key] = Number($('#gif-' + key).value);
     options.crop = window.omniaCrop.value();
+    try {
+      Object.assign(options, window.omniaGif.options());
+    } catch (error) {
+      message(error.message, true);
+      return;
+    }
     if (
       !source.media.still &&
       (!$('#gif-start').checkValidity() || !$('#gif-duration').checkValidity())

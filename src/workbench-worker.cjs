@@ -305,7 +305,10 @@ async function main() {
         if (after.size !== before.size || after.mtimeMs !== before.mtimeMs)
           throw Error('The selected image changed while being read.');
         result.info = await imageInfo(working);
+        if (action.startsWith('icon-') && result.info.format !== 'png')
+          throw Error('Choose a PNG image for ICO conversion.');
         let final = working;
+        let iconPreview;
         if (action === 'palette') {
           const pixels = await sharp(working, { limitInputPixels: PIXELS, failOn: 'warning' })
             .resize({
@@ -322,7 +325,22 @@ async function main() {
             .toBuffer();
           result.palette = require('./palette.cjs').dominantColours(pixels);
         }
-        if (action === 'convert') {
+        if (action === 'icon-convert') {
+          const icon = await require('./ico.cjs').createIcon(working, options, check);
+          final = path.join(directory, source.id + '-result.ico');
+          await fsp.writeFile(final, icon.bytes);
+          iconPreview = path.join(directory, source.id + '-icon.png');
+          await fsp.writeFile(iconPreview, icon.preview);
+          result.output = final;
+          result.outputName = path.parse(source.name).name + '.ico';
+          result.outputInfo = {
+            format: 'ico',
+            width: icon.sizes.at(-1),
+            height: icon.sizes.at(-1),
+            bytes: icon.bytes.length,
+            sizes: icon.sizes,
+          };
+        } else if (action === 'convert') {
           const selected = { ...options, crop: options.crops?.[source.id] || null };
           final = path.join(
             directory,
@@ -391,7 +409,7 @@ async function main() {
                 throw Error(`Could not verify the saved ${key} field.`);
         }
         const previewPath = path.join(directory, source.id + '-preview.png');
-        await preview(final, previewPath);
+        await preview(iconPreview || final, previewPath);
         result.preview = previewPath;
         await fsp.rm(working, { force: true });
       }

@@ -180,6 +180,7 @@ else {
         {
           palette: await createService(['palette'], 'workbench'),
           images: await createService(['images'], 'workbench'),
+          ico: await createService(['ico'], 'workbench'),
           metadata: await createService(['metadata'], 'workbench'),
           inspector: await createService(['inspector'], 'workbench'),
         },
@@ -720,6 +721,14 @@ else {
       handle('omnia:firewall', async (event, action, data = {}) => {
         if (!trusted(event)) throw Error('Untrusted firewall request.');
         if (action === 'status') return firewall.status();
+        if (action === 'advanced') {
+          if (process.platform !== 'win32') throw Error('Windows Firewall requires Windows.');
+          const error = await shell.openPath(
+            path.join(process.env.SystemRoot, 'System32', 'wf.msc'),
+          );
+          if (error) throw Error('Windows Firewall could not be opened.');
+          return true;
+        }
         if (admin.status().busy) throw Error('Wait for the active system operation to finish.');
         if (action === 'refresh') return firewall.refresh();
         if (action === 'detail') return firewall.detail(data.name);
@@ -752,18 +761,20 @@ else {
         if (action === 'drop') return workbench.select(data.tool, data.paths);
         if (action === 'clear') return workbench.clear(data.tool);
         if (action === 'choose') {
-          if (!['images', 'metadata', 'inspector', 'palette'].includes(data.tool))
+          if (!['images', 'metadata', 'inspector', 'palette', 'ico'].includes(data.tool))
             throw Error('Unknown file tool.');
           const result = await dialog.showOpenDialog(window, {
             title: 'Choose ' + (data.tool === 'inspector' ? 'a file' : 'images'),
             properties: data.tool === 'images' ? ['openFile', 'multiSelections'] : ['openFile'],
             filters:
-              data.tool === 'inspector'
-                ? undefined
-                : [
-                    { name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'webp'] },
-                    { name: 'All files', extensions: ['*'] },
-                  ],
+              data.tool === 'ico'
+                ? [{ name: 'PNG images', extensions: ['png'] }]
+                : data.tool === 'inspector'
+                  ? undefined
+                  : [
+                      { name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'webp'] },
+                      { name: 'All files', extensions: ['*'] },
+                    ],
           });
           return result.canceled ? null : workbench.select(data.tool, result.filePaths);
         }

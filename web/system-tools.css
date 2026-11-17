@@ -2,3 +2,5 @@
 
 .system-table .system-button{padding:0;min-height:24px}.firewall-list .system-table td:not(:first-child){white-space:nowrap;overflow-wrap:normal}
 .capacity-legend{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px 16px;font:12px/1.8 var(--mono);color:var(--muted)}.capacity-legend strong{color:var(--ink);font-weight:normal}.volume-free{display:flex;align-items:center;justify-content:center;color:var(--ink);font:12px var(--mono);background:#050505;border:0}.disk-details{margin-top:20px;border-top:1px solid #32322d;padding-top:16px}.disk-details summary{font:12px/1.8 var(--mono);color:var(--muted);cursor:pointer}.partition-detail{display:grid;gap:5px;padding:12px 0;border-top:1px solid #30302c}.partition-detail strong{font:13px var(--mono)}.storage-heading{font:14px var(--mono);font-weight:normal;margin:24px 0 10px}.scan-capacity{border-bottom:1px solid #30302c;padding-bottom:20px}.disk-card .volume:first-child{border-top:0;padding-top:0}.disk-card .storage-bar{margin-top:8px}.storage-segment{flex-shrink:0;box-sizing:border-box}
+#firewall-editor section{margin:18px 0}
+#firewall-editor .system-form{margin-top:16px}

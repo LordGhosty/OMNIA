@@ -51,6 +51,15 @@ for (const config of tools) {
         : ['MP4', 'MOV', 'MKV', 'WEBM', '+ MORE']
   ).join(' <b>·</b> ');
   config.OPTIONS = fs.readFileSync(path.join(root, 'partials', config.partial + '.html'), 'utf8');
+  config.EXTRAS = '';
+  if (config.TOOL === 'gif') {
+    config.OPTIONS = config.OPTIONS.replace(
+      '</section>',
+      fs.readFileSync(path.join(root, 'partials/gif-design.html'), 'utf8') + '</section>',
+    );
+    config.EXTRAS =
+      '<link rel="stylesheet" href="/gif-editor.css"><script src="/gif-effects.js" defer></script><script src="/gif-editor.js" defer></script>';
+  }
   if (config.TOOL !== 'gif') {
     config.OPTIONS += fs.readFileSync(path.join(root, 'partials', 'editing.html'), 'utf8');
     if (config.TOOL === 'mp3') config.ACCEPT += ',.mka,.ac3,.eac3,.ape,.wv,.caf,.au,.tta';

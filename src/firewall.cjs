@@ -15,9 +15,13 @@ function validateSpec(s) {
   for (const [key, values] of Object.entries({
     direction: ['Inbound', 'Outbound'],
     action: ['Allow', 'Block'],
-    protocol: ['TCP', 'UDP', 'Any'],
   }))
     if (!values.includes(s[key])) throw Error('Choose a valid ' + key + '.');
+  if (
+    !['TCP', 'UDP', 'Any', 'ICMPv4', 'ICMPv6'].includes(s.protocol) &&
+    !(typeof s.protocol === 'string' && /^(0|[1-9]\d{0,2})$/.test(s.protocol) && +s.protocol <= 255)
+  )
+    throw Error('Choose a protocol or enter its number from 0 to 255.');
   if (
     !Array.isArray(s.profiles) ||
     !s.profiles.length ||
@@ -28,7 +32,7 @@ function validateSpec(s) {
   for (const key of ['localPort', 'remotePort']) {
     if (typeof s[key] !== 'string' || s[key].length > 200) throw Error('Enter ports or Any.');
     if (s[key] !== 'Any') {
-      if (s.protocol === 'Any') throw Error('Ports require TCP or UDP.');
+      if (!['TCP', 'UDP', '6', '17'].includes(s.protocol)) throw Error('Ports require TCP or UDP.');
       for (const range of s[key].split(',')) {
         if (!/^\d{1,5}(-\d{1,5})?$/.test(range))
           throw Error('Use ports or comma-separated port ranges.');
@@ -44,21 +48,61 @@ function validateSpec(s) {
     (s.program !== 'Any' && !/^[a-z]:\\[^*?"\r\n]+\.exe$/i.test(s.program))
   )
     throw Error('Choose a local executable or Any.');
-  if (typeof s.remoteAddress !== 'string' || !s.remoteAddress || s.remoteAddress.length > 1000)
-    throw Error('Enter a remote address scope.');
-  for (const a of s.remoteAddress.split(',')) {
-    if (['Any', 'LocalSubnet'].includes(a)) continue;
-    const [ip, bits, ...extra] = a.split('/'),
-      family = net.isIP(ip);
-    if (
-      !family ||
-      extra.length ||
-      (bits !== undefined && (!/^\d{1,3}$/.test(bits) || Number(bits) > (family === 4 ? 32 : 128)))
-    )
-      throw Error('Use IP addresses, CIDR subnets, Any or LocalSubnet.');
+  for (const key of ['remoteAddress', 'localAddress']) {
+    if (key === 'localAddress' && s[key] === undefined) continue;
+    if (typeof s[key] !== 'string' || !s[key] || s[key].length > 1000)
+      throw Error('Enter an address scope.');
+    for (const a of s[key].split(',')) {
+      if (['Any', 'LocalSubnet'].includes(a)) continue;
+      const [ip, bits, ...extra] = a.split('/'),
+        family = net.isIP(ip);
+      if (
+        !family ||
+        extra.length ||
+        (bits !== undefined &&
+          (!/^\d{1,3}$/.test(bits) || Number(bits) > (family === 4 ? 32 : 128)))
+      )
+        throw Error('Use IP addresses, CIDR subnets, Any or LocalSubnet.');
+    }
   }
-  if (s.program === 'Any' && s.localPort === 'Any' && s.remotePort === 'Any')
-    throw Error('Choose an application or port scope.');
+  for (const [key, values] of Object.entries({
+    authentication: ['NotRequired', 'Required', 'NoEncap'],
+    encryption: ['NotRequired', 'Required', 'Dynamic'],
+    interfaceType: ['Any', 'Wired', 'Wireless', 'RemoteAccess'],
+  }))
+    if (s[key] !== undefined && !values.includes(s[key]))
+      throw Error('Choose a valid ' + key + '.');
+  if ((s.authentication === undefined) !== (s.encryption === undefined))
+    throw Error('Choose both authentication and encryption settings.');
+  if (
+    (s.authentication && s.authentication !== 'NotRequired' && s.action !== 'Allow') ||
+    (s.encryption && s.encryption !== 'NotRequired' && s.authentication !== 'Required')
+  )
+    throw Error('Secure connections require Allow. Encryption requires IPsec authentication.');
+  if (
+    s.service !== undefined &&
+    (typeof s.service !== 'string' || !/^[\w. -]{1,256}$/.test(s.service))
+  )
+    throw Error('Enter a service short name or Any.');
+  if (
+    s.description !== undefined &&
+    (typeof s.description !== 'string' ||
+      s.description.length > 1000 ||
+      /[\x00-\x08\x0b-\x1f]/.test(s.description))
+  )
+    throw Error('Enter a description of up to 1,000 characters.');
+  if (s.icmp !== undefined) {
+    if (typeof s.icmp !== 'string' || !s.icmp || s.icmp.length > 200)
+      throw Error('Enter ICMP types or Any.');
+    if (s.icmp !== 'Any') {
+      if (!['ICMPv4', 'ICMPv6', '1', '58'].includes(s.protocol))
+        throw Error('ICMP types require ICMPv4 or ICMPv6.');
+      for (const value of s.icmp.split(',')) {
+        if (!/^\d{1,3}(:\d{1,3})?$/.test(value) || value.split(':').some((n) => +n > 255))
+          throw Error('Use ICMP types or type:code pairs from 0 to 255.');
+      }
+    }
+  }
   return Object.fromEntries(
     [
       'displayName',
@@ -70,7 +114,16 @@ function validateSpec(s) {
       'remotePort',
       'program',
       'remoteAddress',
-    ].map((k) => [k, s[k]]),
+      'localAddress',
+      'authentication',
+      'encryption',
+      'icmp',
+      'service',
+      'interfaceType',
+      'description',
+    ]
+      .filter((k) => s[k] !== undefined)
+      .map((k) => [k, s[k]]),
   );
 }
 async function readFirewall(action, data) {

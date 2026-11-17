@@ -185,7 +185,7 @@ test('administrator helper stays within the Windows command limit and parses all
     123456,
   );
   assert.ok(
-    Buffer.from(require('../src/admin.cjs').launchScript(script), 'utf16le').toString('base64')
+    require('../src/admin.cjs').elevationCommand(require('../src/admin.cjs').launchScript(script))
       .length +
       1000 <
       30000,

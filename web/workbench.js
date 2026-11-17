@@ -204,6 +204,10 @@
       : '';
     if (tool === 'palette') {
       window.renderPalette(item.palette);
+    } else if (tool === 'ico') {
+      $('#ico-options').hidden = false;
+      if (info.sizes)
+        $('#output-summary').textContent += ' Included sizes · ' + info.sizes.join(', ') + ' px.';
     } else if (tool === 'images') {
       $('#image-options').hidden = !results.some((r) => r.info && !r.error);
       $('#image-crop').hidden = !!item.output;
@@ -268,6 +272,7 @@
       'file-result-actions',
       'image-preview-panel',
       'image-options',
+      'ico-options',
       'metadata-options',
       'inspector-results',
       'image-crop',
@@ -322,13 +327,15 @@
       sources = files;
       queue();
       await run(
-        tool === 'images'
-          ? 'load'
-          : tool === 'metadata'
-            ? 'metadata-read'
-            : tool === 'palette'
-              ? 'palette'
-              : 'inspect',
+        tool === 'ico'
+          ? 'icon-load'
+          : tool === 'images'
+            ? 'load'
+            : tool === 'metadata'
+              ? 'metadata-read'
+              : tool === 'palette'
+                ? 'palette'
+                : 'inspect',
       );
       const rejected = results.filter((item) => item.error);
       if (rejected.length)
@@ -446,6 +453,19 @@
         : 'This report is too large for the clipboard. Use Export report.';
     }),
   );
+  if (tool === 'ico') {
+    $('#convert-icon').addEventListener(
+      'click',
+      safe(() =>
+        run('icon-convert', {
+          sizes: [...document.querySelectorAll('[name=ico-size]:checked')].map((input) =>
+            Number(input.value),
+          ),
+          fit: $('#ico-fit').value,
+        }),
+      ),
+    );
+  }
   if (tool === 'images') {
     $('#edit-original').addEventListener(
       'click',

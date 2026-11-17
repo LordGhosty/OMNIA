@@ -128,3 +128,5 @@ body[data-active-tool]:not([data-active-tool=home]) .tool-spinner i {
 .window-controls #updates.update-available{width:auto;gap:6px;padding:0 9px}
 .updates-control span{font:11px var(--mono);white-space:nowrap}
 .updates-control span:empty,.update-actions button[hidden]{display:none}
+
+.ico-letter{animation:ico-wave 2.4s ease-in-out infinite}.ico-letter:nth-child(2){animation-delay:-.3s}.ico-letter:nth-child(3){animation-delay:-.6s}@keyframes ico-wave{0%,50%,100%{transform:translateY(0)}25%{transform:translateY(-2.5px)}75%{transform:translateY(2.5px)}}

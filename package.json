@@ -1,6 +1,6 @@
 {
   "name": "omnia",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "OMNIA â€” a local-first desktop multitool",
   "main": "src/bootstrap.cjs",
   "author": "OMNIA",

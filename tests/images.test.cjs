@@ -143,6 +143,23 @@ test('transparent images keep transparent backgrounds in preview and both GIF fr
   );
   assert.equal(rgba[3], 0);
 });
+test('caption bands preserve a still image and its transparent pixels in both frames', async () => {
+  const sharp = require('sharp');
+  const job = await source('transparent.png');
+  const pixels = Buffer.alloc(80 * 80 * 4);
+  for (let i = 0; i < 80 * 10 * 4; i++) pixels[i] = 255;
+  const png = (
+    await sharp(pixels, { raw: { width: 80, height: 80, channels: 4 } })
+      .png()
+      .toBuffer()
+  ).toString('base64');
+  const { decoded, stream } = await convert(job, { overlay: { png, top: 10, bottom: 10 } });
+  assert.deepEqual([stream.width, stream.height], [80, 80]);
+  assert.equal(decoded[3], 255);
+  assert.equal(decoded[10 * 80 * 4 + 3], 0);
+  assert.equal(decoded[(40 * 80 + 30) * 4 + 3], 255);
+});
+
 test('images remain invalid for MP3/MP4, including renamed files and cross-tool conversion', async () => {
   const bytes = await fs.readFile(path.join(root, 'source.png'));
   for (const tool of ['mp3', 'mp4']) {

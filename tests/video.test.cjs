@@ -291,6 +291,207 @@ test('GIF has the requested crop, frame rate, trim duration and an inline previe
   );
 });
 
+test('GIF speed changes timing, finite playback is encoded, and existing GIFs can be edited', async () => {
+  const job = await source('gif');
+  for (const speed of [0.25, 0.5, 2, 4]) {
+    const response = await post('/api/jobs', {
+      sourceId: job.id,
+      format: 'gif',
+      duration: 1,
+      speed,
+      fps: 20,
+      loop: -1,
+    });
+    assert.equal(response.status, 202);
+    const done = await terminal(job.id);
+    assert.equal(done.state, 'done', done.error);
+    const info = await output(done, 'gif');
+    assert.equal(Number(info.streams[0].nb_read_frames), 20 / speed);
+    assert.ok(Math.abs(Number(info.format.duration) - 1 / speed) < 0.06);
+    const bytes = await fs.readFile(path.join(root, job.id + '.gif'));
+    assert.equal(bytes.includes(Buffer.from('NETSCAPE2.0')), false);
+  }
+  const imported = await source('gif', job.id + '.gif');
+  const response = await post('/api/jobs', {
+    sourceId: imported.id,
+    format: 'gif',
+    duration: imported.media.duration,
+    speed: 0.5,
+    loop: 2,
+    fps: 20,
+  });
+  assert.equal(response.status, 202);
+  const done = await terminal(imported.id);
+  assert.equal(done.state, 'done', done.error);
+  const info = await output(done, 'gif');
+  assert.ok(Math.abs(Number(info.format.duration) - imported.media.duration * 2) < 0.06);
+  const bytes = await fs.readFile(path.join(root, imported.id + '.gif'));
+  const loopAt = bytes.indexOf(Buffer.from('NETSCAPE2.0'));
+  assert.ok(loopAt >= 0);
+  assert.equal(bytes.readUInt16LE(loopAt + 13), 2);
+  const short = await post('/api/jobs', {
+    sourceId: job.id,
+    format: 'gif',
+    duration: 0.1,
+    speed: 4,
+    fps: 10,
+  });
+  assert.equal(short.status, 202);
+  const shortDone = await terminal(job.id);
+  assert.equal(shortDone.state, 'done', shortDone.error);
+  assert.ok(Number((await output(shortDone, 'gif')).streams[0].nb_read_frames) >= 1);
+});
+
+test('GIF caption pixels, rotation and palette survive the export pipeline', async () => {
+  const sharp = require('sharp');
+  const job = await source('gif');
+  const width = 120,
+    height = 200;
+  const pixels = Buffer.alloc(width * height * 4);
+  for (let y = 0; y < height; y++)
+    for (let x = 0; x < width; x++) {
+      const i = (y * width + x) * 4;
+      if (y < 20 || y >= 180) {
+        pixels[i] = y < 20 ? 255 : 0;
+        pixels[i + 1] = y >= 180 ? 255 : 0;
+        pixels[i + 3] = 255;
+      }
+    }
+  const png = (
+    await sharp(pixels, { raw: { width, height, channels: 4 } })
+      .png()
+      .toBuffer()
+  ).toString('base64');
+  const response = await post('/api/jobs', {
+    sourceId: job.id,
+    format: 'gif',
+    duration: 1,
+    width: 240,
+    rotate: 90,
+    flip: 'horizontal',
+    colors: 64,
+    dither: 'none',
+    overlay: { png, top: 20, bottom: 20 },
+  });
+  assert.equal(response.status, 202);
+  const done = await terminal(job.id);
+  assert.equal(done.state, 'done', done.error);
+  const info = await output(done, 'gif');
+  assert.deepEqual([info.streams[0].width, info.streams[0].height], [width, height]);
+  const decoded = execFileSync(
+    binaries().ffmpeg,
+    [
+      '-v',
+      'error',
+      '-i',
+      path.join(root, job.id + '.gif'),
+      '-frames:v',
+      '1',
+      '-f',
+      'rawvideo',
+      '-pix_fmt',
+      'rgb24',
+      'pipe:1',
+    ],
+    { windowsHide: true },
+  );
+  assert.ok(decoded[0] > 240 && decoded[1] < 15);
+  const bottom = (height - 1) * width * 3;
+  assert.ok(decoded[bottom] < 15 && decoded[bottom + 1] > 240);
+  const colors = new Set();
+  for (let i = 0; i < decoded.length; i += 3)
+    colors.add(decoded.subarray(i, i + 3).toString('hex'));
+  assert.ok(colors.size <= 64);
+  for (const overlay of [
+    { png, top: 21, bottom: 20 },
+    { png: 'bad', top: 0, bottom: 0 },
+  ])
+    assert.equal(
+      (await post('/api/jobs', { sourceId: job.id, format: 'gif', duration: 1, overlay })).status,
+      400,
+    );
+  for (const options of [
+    { speed: 0 },
+    { speed: 5 },
+    { loop: 0.5 },
+    { colors: 5 },
+    { dither: 'x;movie=file' },
+  ])
+    assert.equal(
+      (await post('/api/jobs', { sourceId: job.id, format: 'gif', duration: 1, ...options }))
+        .status,
+      400,
+    );
+});
+
+test('image effects reduce frame colours before composing unchanged caption bands', async () => {
+  const sharp = require('sharp');
+  const job = await source('gif');
+  const pixels = Buffer.alloc(160 * 140 * 4);
+  for (let i = 0; i < 160 * 20 * 4; i += 4) {
+    pixels[i] = 170;
+    pixels[i + 1] = 85;
+    pixels[i + 2] = 51;
+    pixels[i + 3] = 255;
+  }
+  const png = (
+    await sharp(pixels, { raw: { width: 160, height: 140, channels: 4 } })
+      .png()
+      .toBuffer()
+  ).toString('base64');
+  const versions = [];
+  for (const pattern of ['none', 'bayer', 'checker', 'lines']) {
+    const response = await post('/api/jobs', {
+      sourceId: job.id,
+      format: 'gif',
+      duration: 0.2,
+      width: 160,
+      fps: 10,
+      dither: 'none',
+      pixelSize: 8,
+      colorBits: 1,
+      pattern,
+      overlay: { png, top: 20, bottom: 0 },
+    });
+    assert.equal(response.status, 202);
+    const done = await terminal(job.id);
+    assert.equal(done.state, 'done', done.error);
+    await output(done, 'gif');
+    const decoded = execFileSync(
+      binaries().ffmpeg,
+      [
+        '-v',
+        'error',
+        '-i',
+        path.join(root, job.id + '.gif'),
+        '-frames:v',
+        '1',
+        '-f',
+        'rawvideo',
+        '-pix_fmt',
+        'rgba',
+        'pipe:1',
+      ],
+      { windowsHide: true },
+    );
+    assert.deepEqual([...decoded.subarray(0, 4)], [170, 85, 51, 255]);
+    const image = decoded.subarray(160 * 20 * 4);
+    const colors = new Set();
+    for (let i = 0; i < image.length; i += 4) colors.add(image.subarray(i, i + 3).toString('hex'));
+    assert.ok(colors.size <= 8);
+    for (const value of image) assert.ok(value === 0 || value === 255);
+    assert.deepEqual(image.subarray(0, 4), image.subarray(4, 8));
+    versions.push(image);
+  }
+  assert.notDeepEqual(versions[0], versions[1]);
+  for (const options of [{ pixelSize: 0 }, { colorBits: 9 }, { pattern: 'unknown' }])
+    assert.equal(
+      (await post('/api/jobs', { sourceId: job.id, format: 'gif', duration: 1, ...options }))
+        .status,
+      400,
+    );
+});
+
 test('native crop previews decode real pixels at the requested time without changing the initial frame', async () => {
   const job = await source('gif');
   const initial = Buffer.from(await (await req(`/api/sources/${job.id}/frame`)).arrayBuffer());

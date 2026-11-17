@@ -1,5 +1,10 @@
 // Tool insignias.
 const insigniaDesigns = {
+  icon: () =>
+    makeSVG(
+      'insignia-icon',
+      '<g transform="translate(33 4)" fill="currentColor" stroke="none"><path class="ico-letter" d="m12 13 9-5v6l-3 2v27l3 2v6l-9-5v-5l2 1V19l-2 1z"/><path class="ico-letter" d="m28 4 8-4 8 4v7l-4.5-2.5V7L36 5l-3.5 2v44l3.5 2 3.5-2v-1.5L44 47v7l-8 5-8-5z"/><path class="ico-letter" fill-rule="evenodd" d="m46 15 8-4.5 8 4.5v30l-8 4.5-8-4.5zm4.5 3v24l3.5 2 3.5-2V18L54 16z"/></g>',
+    ),
   eyedropper: () =>
     makeSVG(
       'insignia-eyedropper',

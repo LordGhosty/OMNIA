@@ -29,11 +29,11 @@ const mime = {
 const activeStates = new Set(['uploading', 'downloading', 'inspecting', 'converting']);
 const mediaTools = new Set(['mp3', 'mp4', 'gif']);
 const registry = require('../assets/tools.json');
-async function bodyJSON(req) {
+async function bodyJSON(req, limit = 16384) {
   let text = '';
   for await (const chunk of req) {
     text += chunk;
-    if (text.length > 16384) throw new Error('Request is too large.');
+    if (text.length > limit) throw new Error('Request is too large.');
   }
   try {
     return JSON.parse(text);
@@ -326,7 +326,9 @@ async function startServer({
         accepting = true;
         try {
           const isJSON = (req.headers['content-type'] || '').includes('application/json');
-          const body = isJSON ? await bodyJSON(req) : null;
+          const body = isJSON
+            ? await bodyJSON(req, url.pathname === '/api/jobs' ? 2100000 : 16384)
+            : null;
           httpAccess(scope, url.pathname, req.method, body || Object.fromEntries(url.searchParams));
           if (url.pathname === '/api/jobs' && body?.sourceId) {
             const job = jobs.get(body.sourceId);
@@ -530,6 +532,9 @@ async function startServer({
           '/style.css': 'web/style.css',
           '/converter.js': 'web/converter.js',
           '/crop.js': 'web/crop.js',
+          '/gif-editor.js': 'web/gif-editor.js',
+          '/gif-effects.js': 'web/gif-effects.js',
+          '/gif-editor.css': 'web/gif-editor.css',
           '/launcher.js': 'web/launcher.js',
           '/insignia.js': 'web/insignia.js',
           '/settings.js': 'web/settings.js',

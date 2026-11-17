@@ -50,6 +50,56 @@ async function run(tool, action, files, options = {}) {
   }
   throw Error('Job timeout: ' + JSON.stringify(state));
 }
+test('PNG icons contain every selected size, preserve alpha and save as ICO', async () => {
+  const original = await fs.readFile(png);
+  const sizes = [16, 24, 32, 48, 64, 128, 256];
+  const state = await run('ico', 'icon-convert', [png], { sizes, fit: 'contain' });
+  const result = state.results[0];
+  assert.equal(result.error, undefined);
+  const destination = path.join(root, 'converted.ico');
+  await service.save(result.output, destination);
+  const bytes = await fs.readFile(destination);
+  assert.deepEqual([...bytes.subarray(0, 6)], [0, 0, 1, 0, 7, 0]);
+  let end = 6 + sizes.length * 16;
+  for (const [i, size] of sizes.entries()) {
+    const entry = 6 + i * 16;
+    assert.equal(bytes[entry] || 256, size);
+    assert.equal(bytes[entry + 1] || 256, size);
+    assert.equal(bytes.readUInt16LE(entry + 6), 32);
+    const length = bytes.readUInt32LE(entry + 8),
+      offset = bytes.readUInt32LE(entry + 12);
+    assert.equal(offset, end);
+    const image = bytes.subarray(offset, offset + length);
+    const info = await sharp(image).metadata();
+    assert.deepEqual([info.width, info.height, info.hasAlpha], [size, size, true]);
+    const raw = await sharp(image).ensureAlpha().raw().toBuffer();
+    assert.equal(raw[3], 0);
+    assert.ok(raw[(Math.floor(size / 2) * size + Math.floor(size / 2)) * 4 + 3] > 0);
+    end += length;
+  }
+  assert.equal(end, bytes.length);
+  await assert.rejects(service.save(result.output, destination), /already exists/);
+  assert.deepEqual(await fs.readFile(png), original);
+  const cropped = await run('ico', 'icon-convert', [png], { sizes: [32], fit: 'cover' });
+  const asset = await service.asset(cropped.results[0].preview);
+  assert.ok((await sharp(asset.path).ensureAlpha().raw().toBuffer())[3] > 0);
+  for (const file of [jpeg, webp]) {
+    const rejected = await run('ico', 'icon-load', [file]);
+    assert.match(rejected.results[0].error, /PNG/);
+  }
+  for (const options of [
+    { sizes: [] },
+    { sizes: [1024] },
+    { sizes: [32, 32] },
+    { fit: 'stretch' },
+  ]) {
+    const rejected = await run('ico', 'icon-convert', [png], options);
+    assert.ok(rejected.results[0].error);
+    assert.equal(rejected.results[0].output, undefined);
+  }
+  await assert.rejects(service.start('ico', 'metadata-write'), /Unsupported/);
+});
+
 test('image batch converts real pixels, respects crop dimensions and never overwrites a source', async () => {
   const original = await fs.readFile(png);
   const state = await run('images', 'convert', [png, jpeg], (files) => ({

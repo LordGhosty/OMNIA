@@ -288,6 +288,11 @@ function optionsFor(format, input = {}, media) {
         throw Error('MP4 crops must be at least 2 × 2 pixels.');
     }
   }
+  if (format === 'gif')
+    Object.assign(
+      options,
+      require('./gif.cjs').settings({ ...input, width: options.width }, media, options.crop),
+    );
   return options;
 }
 function audioEncoding(format, audio, bitrate) {
@@ -335,7 +340,9 @@ async function convert(job, supplied) {
   const o = optionsFor(supplied.format, supplied, job.media);
   const base = ['-hide_banner', '-loglevel', 'error', '-nostdin', '-y'];
   let outputArgs,
-    duration = job.duration;
+    duration = job.duration,
+    palettePass;
+  const extraInputs = [];
   if (o.format !== 'gif') {
     if (o.start) base.push('-ss', String(o.start));
     if (o.duration) base.push('-t', String(o.duration));
@@ -388,18 +395,45 @@ async function convert(job, supplied) {
         '+faststart',
       ];
     } else {
-      duration = o.duration;
-      const crop = o.crop
-        ? `crop=${o.crop.width}:${o.crop.height}:${o.crop.x}:${o.crop.y}:exact=1,`
-        : '';
-      const timing = job.media.still
-        ? 'trim=end_frame=1,loop=loop=1:size=1:start=0,setpts=N/(2*TB),'
-        : `fps=${o.fps},`;
-      const filter = `[0:${job.video.index}]format=rgba,scale=iw*sar:ih,setsar=1,${crop}${timing}scale=min(${o.width}\\,iw):-1:flags=lanczos,split[a][b];[a]palettegen=stats_mode=${job.media.still ? 'single' : 'diff'}[p];[b][p]paletteuse=dither=sierra2_4a${job.media.still ? ':new=1' : ''}`;
-      outputArgs = ['-an', '-filter_complex', filter, '-loop', '0'];
+      duration = job.media.still ? 1 : o.duration / o.speed;
+      const filters = ['format=rgba', 'scale=iw*sar:ih', 'setsar=1'];
+      if (o.crop)
+        filters.push(`crop=${o.crop.width}:${o.crop.height}:${o.crop.x}:${o.crop.y}:exact=1`);
+      if (o.rotate === 90) filters.push('transpose=1');
+      if (o.rotate === 180) filters.push('hflip', 'vflip');
+      if (o.rotate === 270) filters.push('transpose=2');
+      if (o.flip !== 'none') filters.push(o.flip === 'horizontal' ? 'hflip' : 'vflip');
+      if (job.media.still)
+        filters.push('trim=end_frame=1', 'loop=loop=1:size=1:start=0', 'setpts=N/(2*TB)');
+      else filters.push(`setpts=(PTS-STARTPTS)/${o.speed}`, `fps=${o.fps}:eof_action=pass`);
+      filters.push(`scale=${o.outputWidth}:${o.outputHeight}:flags=lanczos`);
+      filters.push(...require('../web/gif-effects.js').filters(o, o.outputWidth, o.outputHeight));
+      let composition = `[0:${job.video.index}]${filters.join(',')}`;
+      if (o.overlay) {
+        const file = await require('./gif.cjs').writeOverlay(job.directory, o.overlay);
+        extraInputs.push('-loop', '1', '-i', file);
+        composition += `,pad=iw:ih+${o.overlay.top + o.overlay.bottom}:0:${o.overlay.top}:color=black@0[base];[base][1:v]overlay=shortest=1:format=auto`;
+      }
+      const palette = path.join(job.directory, 'gif-palette.png');
+      palettePass = {
+        inputs: [...extraInputs],
+        filter: `${composition},palettegen=max_colors=${o.colors}:stats_mode=${job.media.still ? 'full' : 'diff'}`,
+        file: palette,
+      };
+      const paletteIndex = o.overlay ? 2 : 1;
+      extraInputs.push('-i', palette);
+      const filter = `${composition}[frames];[frames][${paletteIndex}:v]paletteuse=dither=${o.dither}`;
+      outputArgs = ['-an', '-filter_complex', filter, '-loop', String(o.loop)];
       if (job.media.still)
         outputArgs.push('-frames:v', '2', '-r', '2', '-gifflags', '-offsetting-transdiff');
-      else base.push('-ss', String(o.start), '-t', String(duration));
+      else
+        base.push(
+          '-ss',
+          String(o.start),
+          '-t',
+          String(o.duration),
+          ...(job.video.codec_name === 'gif' ? ['-ignore_loop', '1'] : []),
+        );
     }
   }
   if (o.format !== 'gif' && job.audio && !o.mute) {
@@ -415,9 +449,36 @@ async function convert(job, supplied) {
   job.output = path.join(job.directory, `output.${o.format}`);
   job.state = 'converting';
   job.progress = 0;
+  if (palettePass) {
+    // A separate palette pass avoids buffering the entire animation behind palettegen.
+    await run(
+      job,
+      binaries().ffmpeg,
+      [
+        ...base,
+        ...inputArgs(job),
+        ...palettePass.inputs,
+        '-an',
+        '-filter_complex',
+        palettePass.filter,
+        '-frames:v',
+        '1',
+        '-update',
+        '1',
+        '-threads',
+        '2',
+        '-filter_complex_threads',
+        '1',
+        palettePass.file,
+      ],
+      { timeout: 2 * 60 * 60 * 1000, diskLimit: true },
+    );
+    job.progress = 50;
+  }
   const args = [
     ...base,
     ...inputArgs(job),
+    ...extraInputs,
     ...(o.format === 'gif' ? ['-t', String(duration)] : []),
     '-map_metadata',
     '-1',
@@ -438,7 +499,10 @@ async function convert(job, supplied) {
       if (line.startsWith('out_time_us=') && duration)
         job.progress = Math.min(
           99,
-          Math.round((Number(line.split('=')[1]) / 1000000 / duration) * 100),
+          (palettePass ? 50 : 0) +
+            Math.round(
+              (Number(line.split('=')[1]) / 1000000 / duration) * (palettePass ? 50 : 100),
+            ),
         );
     },
   });

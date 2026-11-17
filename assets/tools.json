@@ -2,7 +2,7 @@
   {
     "id": "mp3",
     "name": "MP3 converter",
-    "category": "Audio & Video",
+    "category": "Audio & Video & Image",
     "description": "Extract sound and turn it to mp3",
     "tags": "AUDIO + VIDEO → MP3",
     "insignia": "audio",
@@ -11,7 +11,7 @@
   {
     "id": "mp4",
     "name": "MP4 converter",
-    "category": "Audio & Video",
+    "category": "Audio & Video & Image",
     "description": "Turn videos into mp4",
     "tags": "VIDEO → MP4",
     "insignia": "video",
@@ -20,11 +20,20 @@
   {
     "id": "gif",
     "name": "GIF converter",
-    "category": "Audio & Video",
+    "category": "Audio & Video & Image",
     "description": "Make GIFs from images and videos",
     "tags": "IMAGES + VIDEO → GIF",
     "insignia": "gif",
     "page": "gif.html"
+  },
+  {
+    "id": "ico",
+    "name": "PNG to ICO",
+    "category": "Audio & Video & Image",
+    "description": "Create Windows icons from a PNG image",
+    "tags": "PNG → ICO",
+    "insignia": "icon",
+    "page": "ico.html"
   },
   {
     "id": "images",

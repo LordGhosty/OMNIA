@@ -81,14 +81,14 @@ test('disk scan reports bounded partial coverage instead of a false complete res
     await fs.rm(root, { recursive: true, force: true });
   }
 });
-test('firewall scope validation rejects broad unscoped rules and malformed arguments', () => {
+test('firewall scope validation permits all programs and rejects malformed arguments', () => {
   assert.deepEqual(validateSpec(spec()), spec());
+  assert.equal(validateSpec({ ...spec(), localPort: 'Any', protocol: 'Any' }).program, 'Any');
   assert.equal(
     validateSpec({ ...spec(), remoteAddress: '192.0.2.0/24,2001:db8::/32' }).profiles[0],
     'Private',
   );
   for (const patch of [
-    { localPort: 'Any' },
     { localPort: '443;whoami' },
     { localPort: '65536' },
     { localPort: '100-20' },
@@ -153,6 +153,45 @@ test('firewall plans are one-use, journaled and undo uses the recorded identity'
   } finally {
     await fs.rm(root, { recursive: true, force: true });
   }
+});
+test('firewall custom rules validate IPsec, ICMP, services and local scope', () => {
+  const secure = {
+    ...spec(),
+    action: 'Allow',
+    authentication: 'Required',
+    encryption: 'Required',
+    localAddress: '192.0.2.0/24,2001:db8::/32',
+    service: 'FixtureService',
+    interfaceType: 'Wireless',
+    description: 'Fixture secure rule',
+  };
+  assert.deepEqual(validateSpec(secure), secure);
+  assert.equal(
+    validateSpec({ ...spec(), protocol: 'ICMPv6', localPort: 'Any', icmp: '128,129:0' }).icmp,
+    '128,129:0',
+  );
+  assert.equal(validateSpec({ ...spec(), protocol: '47', localPort: 'Any' }).protocol, '47');
+  for (const patch of [
+    { authentication: 'NoEncap' },
+    { authentication: 'NotRequired' },
+    { action: 'Block' },
+    { encryption: 'Unsupported' },
+    { localAddress: '192.0.2.1/33' },
+    { service: 'svc;whoami' },
+    { interfaceType: 'Other' },
+    { description: 'x'.repeat(1001) },
+    { protocol: '256' },
+    { icmp: '8' },
+    { localPort: 'Any', protocol: 'ICMPv4', icmp: '256' },
+    { authentication: undefined },
+  ])
+    assert.throws(() => validateSpec({ ...secure, ...patch }));
+  assert.equal(
+    validateSpec({ ...secure, authentication: 'NoEncap', encryption: 'NotRequired' })
+      .authentication,
+    'NoEncap',
+  );
+  assert.equal('authentication' in validateSpec(spec()), false);
 });
 test('Windows Repair streams bounded output, rejects unknown commands and records exit codes', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'omnia-repair-test-'));

@@ -66,6 +66,29 @@ module.exports = async ({ window, views, navigate, dir }) => {
   }
   try {
     dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [source] });
+    await navigate('ico');
+    await drop('ico', [source]);
+    if (!(await js('ico', "return !d.querySelector('#ico-options').hidden;")))
+      throw Error('Icon options did not appear after dropping a PNG.');
+    await js('ico', "d.querySelector('#convert-icon').click();");
+    await wait('ico');
+    const iconFile = path.join(dir, 'icon-export-' + Date.now() + '.ico');
+    dialog.showSaveDialog = async () => ({ canceled: false, filePath: iconFile });
+    await js('ico', "d.querySelector('#save-file').click();");
+    for (let n = 0; n < 100; n++) {
+      try {
+        const bytes = await fs.readFile(iconFile);
+        if (bytes.readUInt16LE(2) !== 1 || bytes.readUInt16LE(4) !== 5)
+          throw Error('Icon export has an invalid directory.');
+        break;
+      } catch (error) {
+        if (error.code !== 'ENOENT' || n === 99) throw error;
+        await new Promise((r) => setTimeout(r, 50));
+      }
+    }
+    await js('ico', "d.querySelector('#ico-options').scrollIntoView({block:'center'});");
+    await screenshot('png-to-ico.png');
+    await clear('ico');
     await navigate('palette');
     await drop('palette', [source]);
     if (

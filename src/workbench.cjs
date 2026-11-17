@@ -6,6 +6,7 @@ const crypto = require('node:crypto');
 const { Worker } = require('node:worker_threads');
 const toolActions = {
   images: ['load', 'convert'],
+  ico: ['icon-load', 'icon-convert'],
   palette: ['palette'],
   metadata: ['metadata-read', 'metadata-write', 'metadata-remove'],
   inspector: ['inspect'],

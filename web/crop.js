@@ -181,8 +181,8 @@
       $('gif-note').textContent = !isGif
         ? 'Crop uses the original frame before rotation.'
         : media.still
-          ? 'Still image · Two identical frames · Loops continuously.'
-          : 'Up to 30 seconds · Loops continuously · No audio.';
+          ? 'Still image · Two identical frames.'
+          : 'Select up to 30 seconds of source footage · Speed changes the output length · No audio.';
       const preview = $('source-preview');
       preview.pause();
       preview.removeAttribute('src');
@@ -211,7 +211,7 @@
       $('gif-frame-rate').hidden = false;
       $('gif-options-title').textContent = 'TRIM & CROP';
       $('gif-note').textContent = isGif
-        ? 'Up to 30 seconds · Loops continuously · No audio.'
+        ? 'Select up to 30 seconds of source footage · No audio.'
         : 'Crop uses the original frame before rotation.';
     },
   };
